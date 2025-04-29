@@ -1,0 +1,78 @@
+/* src/styles/ChatInsights.css */
+
+.chat-insights {
+    padding: 1.25rem 1rem;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.insights-header {
+    margin-bottom: 1.5rem;
+}
+
+.insights-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    margin-bottom: 0.25rem;
+}
+
+.insights-subtitle {
+    font-size: 0.75rem;
+    color: var(--light-text, #6b7280);
+}
+
+.insights-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.insight-section {
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    padding-bottom: 1.25rem;
+}
+
+.insight-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.insight-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    margin-bottom: 0.5rem;
+}
+
+.insight-text {
+    font-size: 0.8125rem;
+    color: var(--light-text, #6b7280);
+    line-height: 1.5;
+}
+
+.insight-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.insight-item {
+    font-size: 0.8125rem;
+    color: var(--light-text, #6b7280);
+    margin-bottom: 0.5rem;
+    padding-left: 1.25rem;
+    position: relative;
+    line-height: 1.5;
+}
+
+.insight-item::before {
+    content: "";
+    position: absolute;
+    left: 0.25rem;
+    top: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: var(--primary-color, #3b82f6);
+    border-radius: 50%;
+}
