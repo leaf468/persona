@@ -2,6 +2,7 @@
 
 .persona-selection {
     padding: 1rem 0 2rem;
+    width: 100%;
 }
 
 .selection-title {
@@ -18,13 +19,14 @@
 
 .personas-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
 }
 
 @media (min-width: 768px) {
     .personas-grid {
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     }
 }
 
@@ -32,4 +34,9 @@
     .personas-grid {
         grid-template-columns: repeat(3, 1fr);
     }
+}
+
+.reset-button-container {
+    text-align: center;
+    margin-top: 2rem;
 }

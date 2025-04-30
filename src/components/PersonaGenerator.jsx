@@ -5,7 +5,54 @@ import PersonaSelection from "./PersonaSelection";
 import PersonaChat from "./PersonaChat";
 import "../styles/App.css";
 
-const PersonaGenerator = ({ statsData }) => {
+// 목표와 불만 사항을 다양하게 생성하는 함수
+const generateUniqueGoalsAndFrustrations = (personaId, baseInfo) => {
+    const goals = [
+        "시간 효율성 향상을 통한 생산성 증대",
+        "사용자 경험 개선과 편의성 증대",
+        "정보 접근성 향상 및 의사결정 지원",
+        "비용 절감 및 자원 최적화",
+        "보안과 안정성 향상",
+        "커뮤니케이션 개선 및 협업 증진",
+        "맞춤형 서비스 및 개인화 경험 제공",
+        "자동화를 통한 업무 효율성 향상",
+        "데이터 통합과 분석을 통한 인사이트 제공",
+        "지속 가능한 솔루션과 친환경적 접근",
+    ];
+
+    const frustrations = [
+        "복잡한 인터페이스로 인한 사용성 저하",
+        "느린 처리 속도와 응답 시간",
+        "불충분한 개인화 옵션",
+        "데이터 보안 및 개인정보 보호 우려",
+        "부족한, 잘못된 정보로 인한 의사결정 오류",
+        "고비용 구조와 불투명한 요금 체계",
+        "기능 간 통합성 부족과 호환성 문제",
+        "비효율적인 지원 서비스와 해결 지연",
+        "빈번한 오류와 시스템 불안정성",
+        "직관적이지 않은 탐색과 정보 구조",
+    ];
+
+    // personaId를 사용하여 고유한 인덱스 생성
+    const goalIndex = personaId % goals.length;
+    const frustrationIndex = (personaId + 3) % frustrations.length; // 다른 값을 얻기 위해 오프셋 추가
+
+    // 기본 정보가 있는 경우 이를 결합하여 더 맞춤화된 내용 생성
+    const customizedGoal = baseInfo.solution
+        ? `${goals[goalIndex]} - ${baseInfo.solution}을 통해 가능`
+        : goals[goalIndex];
+
+    const customizedFrustration = baseInfo.problem
+        ? `${frustrations[frustrationIndex]} - ${baseInfo.problem}과 관련하여 특히 문제됨`
+        : frustrations[frustrationIndex];
+
+    return {
+        goals: customizedGoal,
+        frustrations: customizedFrustration,
+    };
+};
+
+const PersonaGenerator = ({ statsData, onChatStateChange }) => {
     // 사용자 입력 상태 관리
     const [targetMarket, setTargetMarket] = useState("");
     const [targetCustomer, setTargetCustomer] = useState("");
@@ -32,6 +79,13 @@ const PersonaGenerator = ({ statsData }) => {
         topCorrelation: null,
         dominantCluster: null,
     });
+
+    // 채팅 모드 변경 시 부모 컴포넌트에 알림
+    useEffect(() => {
+        if (onChatStateChange) {
+            onChatStateChange(chatMode);
+        }
+    }, [chatMode, onChatStateChange]);
 
     // 통계 데이터 요약 생성
     useEffect(() => {
@@ -169,7 +223,41 @@ const PersonaGenerator = ({ statsData }) => {
                     3 // 3명의 페르소나 생성
                 );
 
-                setPersonas(generatedPersonas);
+                // 성격 특성을 다르게 설정
+                const personalityTraits = [
+                    "내향적, 분석적, 계획적, 신중한",
+                    "외향적, 직관적, 즉흥적, 활동적",
+                    "균형적, 분석적, 계획적, 체계적",
+                ];
+
+                // 목표와 불만 사항 정보
+                const baseInfo = {
+                    problem: problem,
+                    solution: solution,
+                };
+
+                // 각 페르소나에 고유 ID와 다른 성격 특성 부여, 고유한 목표와 불만 사항 생성
+                const personasWithCustomTraits = generatedPersonas.map(
+                    (persona, index) => {
+                        const personaId = index + 1;
+                        const { goals, frustrations } =
+                            generateUniqueGoalsAndFrustrations(
+                                personaId,
+                                baseInfo
+                            );
+
+                        return {
+                            ...persona,
+                            id: personaId,
+                            personality:
+                                personalityTraits[index] || persona.personality,
+                            goals: goals,
+                            frustrations: frustrations,
+                        };
+                    }
+                );
+
+                setPersonas(personasWithCustomTraits);
                 setMessages((prev) => [
                     ...prev,
                     {

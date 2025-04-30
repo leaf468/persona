@@ -173,32 +173,46 @@ const PersonaChat = ({ persona, onBack }) => {
             </div>
 
             <div className="chat-content">
+                {/* 좌측 인사이트 패널 */}
                 <div className="chat-insights-container">
                     <ChatInsights insights={insights} persona={persona} />
                 </div>
 
+                {/* 우측 채팅 패널 */}
                 <div className="chat-messages-container">
                     <div className="chat-messages" ref={chatContainerRef}>
-                        {chatHistory.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`chat-message ${message.sender}-message`}
-                            >
-                                {message.sender === "persona" && (
-                                    <img
-                                        src={
-                                            persona.photo ||
-                                            "/placeholder-persona.jpg"
-                                        }
-                                        alt={persona.name}
-                                        className="chat-avatar"
-                                    />
-                                )}
-                                <div className="message-bubble">
-                                    {message.content}
+                        {chatHistory.map((message, index) => {
+                            if (message.sender === "system") {
+                                return (
+                                    <div key={index} className="system-message">
+                                        <div className="message-bubble">
+                                            {message.content}
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div
+                                    key={index}
+                                    className={`chat-message ${message.sender}-message`}
+                                >
+                                    {message.sender === "persona" && (
+                                        <img
+                                            src={
+                                                persona.photo ||
+                                                "/placeholder-persona.jpg"
+                                            }
+                                            alt={persona.name}
+                                            className="chat-avatar"
+                                        />
+                                    )}
+                                    <div className="message-bubble">
+                                        {message.content}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {isLoading && (
                             <div className="chat-message persona-message">

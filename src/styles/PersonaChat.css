@@ -17,6 +17,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    z-index: 10;
 }
 
 .back-button {
@@ -72,38 +73,51 @@
     border-right: 1px solid var(--border-color, #e5e7eb);
     background-color: #f9fafb;
     overflow-y: auto;
+    flex-shrink: 0;
 }
 
 .chat-messages-container {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    position: relative;
 }
 
 .chat-messages {
     flex-grow: 1;
     padding: 1rem;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
+/* 채팅 메시지 컨테이너 - 직접 스타일 적용 */
 .chat-message {
     margin-bottom: 1rem;
     display: flex;
+    width: 100%;
     align-items: flex-start;
 }
 
+/* 사용자 메시지 - 직접 스타일 적용 */
 .user-message {
     justify-content: flex-end;
+    padding-left: 20%;
 }
 
+/* 페르소나 메시지 - 직접 스타일 적용 */
 .persona-message {
     justify-content: flex-start;
+    padding-right: 20%;
 }
 
+/* 시스템 메시지 - 직접 스타일 적용 */
 .system-message {
     display: flex;
     justify-content: center;
     margin: 1rem 0;
+    width: 100%;
 }
 
 .chat-avatar {
@@ -111,12 +125,15 @@
     height: 2.5rem;
     border-radius: 50%;
     margin-right: 0.75rem;
+    flex-shrink: 0;
 }
 
 .message-bubble {
     padding: 0.75rem 1rem;
     border-radius: 1rem;
-    max-width: 70%;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .user-message .message-bubble {
@@ -185,6 +202,10 @@
     display: flex;
     padding: 1rem;
     border-top: 1px solid var(--border-color, #e5e7eb);
+    width: 100%;
+    background-color: var(--card-bg, #ffffff);
+    z-index: 10;
+    position: relative;
 }
 
 .chat-input {
@@ -200,6 +221,12 @@
 .chat-input:focus {
     outline: none;
     border-color: var(--primary-color, #3b82f6);
+}
+
+.chat-input:disabled {
+    background-color: var(--bg-color, #f3f4f6);
+    color: var(--light-text, #6b7280);
+    cursor: not-allowed;
 }
 
 .chat-send-button {
@@ -251,6 +278,9 @@
     border-top: 1px solid var(--border-color, #e5e7eb);
     display: flex;
     justify-content: center;
+    z-index: 10;
+    position: relative;
+    background-color: var(--card-bg, #ffffff);
 }
 
 /* 보조 버튼 스타일 */
@@ -274,4 +304,26 @@
     color: #ef4444;
     text-align: center;
     padding: 2rem;
+}
+
+/* 모바일 반응형 디자인 */
+@media (max-width: 768px) {
+    .chat-content {
+        flex-direction: column;
+    }
+
+    .chat-insights-container {
+        width: 100%;
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    .user-message {
+        padding-left: 15%;
+    }
+
+    .persona-message {
+        padding-right: 15%;
+    }
 }

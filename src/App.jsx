@@ -1,46 +1,87 @@
+// src/App.jsx
 import { useState, useEffect } from "react";
 import PersonaGenerator from "./components/PersonaGenerator";
+import ConsultantChatbot from "./components/ConsultantChatbot";
 import { parseStatisticalData } from "./services/statisticalDataProcessor";
+import { loadConsultantFiles } from "./services/consultantService";
 import "./styles/App.css";
 
 function App() {
     const [statsData, setStatsData] = useState(null);
+    const [consultantData, setConsultantData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState("persona"); // "persona" 또는 "consultant"
 
     useEffect(() => {
-        // 통계 데이터 파일 로드
-        const loadStatisticalData = async () => {
+        // 통계 데이터 및 컨설턴트 파일 로드
+        const loadData = async () => {
             try {
                 setIsLoading(true);
 
-                // Vite에서 텍스트 파일 가져오기
-                const response = await fetch("/stats_report_demo.txt");
-                const textContent = await response.text();
+                // 통계 데이터 파일 로드 (페르소나 생성용)
+                const statsResponse = await fetch("/stats_report_demo.txt");
+                const statsText = await statsResponse.text();
+                const parsedStats = parseStatisticalData(statsText);
+                setStatsData(parsedStats);
 
-                // 통계 데이터 파싱
-                const parsedData = parseStatisticalData(textContent);
+                // 컨설턴트 문서 파일 목록 (실제 파일 이름으로 대체 필요)
+                const consultantFileNames = [
+                    "business_strategy.txt",
+                    "marketing_guide.txt",
+                    "hr_management.txt",
+                    "financial_planning.txt",
+                    "innovation_frameworks.txt",
+                ];
 
-                setStatsData(parsedData);
+                // 컨설턴트 파일 로드
+                const loadedFiles = await loadConsultantFiles(
+                    consultantFileNames
+                );
+                setConsultantData({ files: loadedFiles });
+
                 setIsLoading(false);
             } catch (error) {
-                console.error("통계 데이터 로드 중 오류 발생:", error);
-                setError("통계 데이터를 로드하는 중 오류가 발생했습니다.");
+                console.error("데이터 로드 중 오류 발생:", error);
+                setError("데이터를 로드하는 중 오류가 발생했습니다.");
                 setIsLoading(false);
             }
         };
 
-        loadStatisticalData();
+        loadData();
     }, []);
+
+    // 탭 전환 핸들러
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+    };
 
     return (
         <div>
             <header className="header">
                 <div className="container">
-                    <h1 className="header-title">AI 기반 페르소나 생성기</h1>
+                    <h1 className="header-title">AI 기반 비즈니스 솔루션</h1>
                     <p className="header-subtitle">
-                        통계 데이터 기반으로 정확한 타겟 페르소나 생성
+                        페르소나 생성 및 경영 컨설팅 서비스
                     </p>
+                    <div className="tab-navigation">
+                        <button
+                            className={`tab-nav-button ${
+                                activeTab === "persona" ? "active" : ""
+                            }`}
+                            onClick={() => handleTabChange("persona")}
+                        >
+                            페르소나 생성기
+                        </button>
+                        <button
+                            className={`tab-nav-button ${
+                                activeTab === "consultant" ? "active" : ""
+                            }`}
+                            onClick={() => handleTabChange("consultant")}
+                        >
+                            경영 컨설턴트
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -49,9 +90,7 @@ function App() {
                     {isLoading ? (
                         <div className="loading">
                             <div className="spinner"></div>
-                            <p className="loading-text">
-                                통계 데이터 로드 중...
-                            </p>
+                            <p className="loading-text">데이터 로드 중...</p>
                         </div>
                     ) : error ? (
                         <div className="error">
@@ -59,7 +98,15 @@ function App() {
                             <p>{error}</p>
                         </div>
                     ) : (
-                        <PersonaGenerator statsData={statsData} />
+                        <div className="app-content">
+                            {activeTab === "persona" ? (
+                                <PersonaGenerator statsData={statsData} />
+                            ) : (
+                                <ConsultantChatbot
+                                    consultantData={consultantData}
+                                />
+                            )}
+                        </div>
                     )}
                 </div>
             </main>
@@ -67,8 +114,8 @@ function App() {
             <footer className="footer">
                 <div className="container">
                     <p className="footer-content">
-                        © 2025 AI 기반 페르소나 생성기 - 통계 데이터를 활용한
-                        정확한 페르소나 생성 서비스
+                        © 2025 AI 기반 비즈니스 솔루션 - 데이터 기반 의사결정을
+                        위한 최적의 파트너
                     </p>
                 </div>
             </footer>

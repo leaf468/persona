@@ -10,6 +10,8 @@
     display: flex;
     flex-direction: column;
     cursor: pointer;
+    margin: 0; /* 여백 제거 */
+    width: 100%; /* 전체 너비 사용 */
 }
 
 .persona-card:hover {
@@ -421,5 +423,28 @@
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* 페르소나 선택 컴포넌트 스타일 수정 */
+.personas-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 0.5rem; /* 좌우 여백 줄임 */
+}
+
+.personas-grid {
+    gap: 1rem; /* 카드 간 간격 줄임 */
+}
+
+@media (min-width: 768px) {
+    .personas-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .personas-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }

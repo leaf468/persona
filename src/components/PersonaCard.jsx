@@ -3,10 +3,114 @@
 import { useState, useEffect } from "react";
 import "../styles/PersonaCard.css";
 
+// 페르소나 ID에 기반한 일관된 불릿 리스트 항목 생성
+const generateConsistentBulletItems = (personaId, type, baseInfo) => {
+    // 목표 관련 항목들
+    const goalItems = [
+        "효율적인 정보 접근 및 의사결정 지원을 원함",
+        "시간과 비용을 절약할 수 있는 솔루션을 찾고 있음",
+        "개인화된 경험과 맞춤형 서비스를 선호함",
+        "사용하기 쉽고 직관적인 인터페이스를 중요시함",
+        "데이터 기반의 통찰력 있는 분석을 추구함",
+        "연결성과 통합이 용이한 시스템을 원함",
+        "자동화를 통한 업무 최적화에 관심이 있음",
+        "보안과 개인정보 보호에 높은 가치를 둠",
+        "편리한 모바일 접근성을 중요하게 생각함",
+        "지속 가능한 해결책과 장기적 가치를 중시함",
+    ];
+
+    // 불만 관련 항목들
+    const frustrationItems = [
+        "복잡하고 직관적이지 않은 사용자 인터페이스에 불만족",
+        "긴 로딩 시간과 느린 성능에 좌절감을 느낌",
+        "불충분한 개인화 옵션으로 인한 불편함",
+        "관련 정보를 찾는 과정이 번거롭고 시간 소모적임",
+        "기능 간 일관성 부족으로 사용에 혼란을 느낌",
+        "데이터 보안 및 개인정보 보호에 대한 우려",
+        "기술적 문제 발생 시 지원 서비스가 부족함",
+        "사용자 피드백이 실제 개선으로 이어지지 않음",
+        "정기적인 업데이트와 유지보수가 부족함",
+        "타 시스템과의 통합 및 호환성 문제가 발생함",
+    ];
+
+    // 페르소나 ID로부터 고유한 항목 선택
+    const getItemsForPersona = (items, count = 4) => {
+        // 페르소나 ID에 따라 일관된 시드값 생성
+        const generateSeed = (id, offset = 0) =>
+            (id * 13 + offset) % items.length;
+
+        const result = [];
+        for (let i = 0; i < count; i++) {
+            const index = generateSeed(personaId, i);
+            let item = items[index];
+
+            // 기본 정보(문제/솔루션)가 있으면 일부 항목에 통합
+            if (baseInfo && i === 0) {
+                if (type === "goals" && baseInfo.solution) {
+                    item += ` - ${baseInfo.solution} 활용`;
+                } else if (type === "frustrations" && baseInfo.problem) {
+                    item += ` - ${baseInfo.problem} 문제와 관련하여`;
+                }
+            }
+
+            result.push(item);
+        }
+
+        return result;
+    };
+
+    return type === "goals"
+        ? getItemsForPersona(goalItems)
+        : getItemsForPersona(frustrationItems);
+};
+
 const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
     const [expanded, setExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState("profile"); // 'profile', 'details', 'brands'
     const [imageLoading, setImageLoading] = useState(true);
+    const [goalItems, setGoalItems] = useState([]);
+    const [frustrationItems, setFrustrationItems] = useState([]);
+
+    // 페르소나 정보가 업데이트될 때 목표 및 불만 항목 생성
+    useEffect(() => {
+        if (persona && persona.id) {
+            const baseInfo = {
+                problem: persona.problem || "",
+                solution: persona.solution || "",
+            };
+
+            setGoalItems(
+                generateConsistentBulletItems(persona.id, "goals", baseInfo)
+            );
+            setFrustrationItems(
+                generateConsistentBulletItems(
+                    persona.id,
+                    "frustrations",
+                    baseInfo
+                )
+            );
+        }
+    }, [persona]);
+
+    // 페르소나 ID를 기반으로 일관된 값 생성 (매번 같은 값 보장)
+    const generateConsistentValue = (trait, baseValue = 50) => {
+        // persona.id와 trait을 결합하여 일관된 해시 값을 생성
+        const hashCode = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = (hash << 5) - hash + char;
+                hash = hash & hash; // 32bit 정수로 변환
+            }
+            return Math.abs(hash);
+        };
+
+        // persona.id와 trait을 결합하여 해시 생성
+        const hash = hashCode(`${persona.id}-${trait}`);
+
+        // 해시 값을 30-90 범위의 값으로 변환 (baseValue +- 20)
+        return Math.min(90, Math.max(30, baseValue - 20 + (hash % 40)));
+    };
 
     // 페르소나 속성에서 동기부여, 성격 등을 추출
     const getPersonalityTraits = () => {
@@ -25,12 +129,12 @@ const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
     // 동기부여 요소 수치화 (0-100 사이)
     const getMotivations = () => {
         return {
-            incentive: Math.floor(Math.random() * 50) + 50, // 자극 (50-100)
-            fear: Math.floor(Math.random() * 30) + 10, // 두려움 (10-40)
-            achievement: Math.floor(Math.random() * 50) + 50, // 성취 (50-100)
-            growth: Math.floor(Math.random() * 40) + 60, // 성장 (60-100)
-            power: Math.floor(Math.random() * 40) + 20, // 파워 (20-60)
-            social: Math.floor(Math.random() * 60) + 20, // 소셜 (20-80)
+            incentive: generateConsistentValue("incentive", 60), // 자극 (50-70)
+            fear: generateConsistentValue("fear", 25), // 두려움 (10-40)
+            achievement: generateConsistentValue("achievement", 65), // 성취 (50-80)
+            growth: generateConsistentValue("growth", 70), // 성장 (60-80)
+            power: generateConsistentValue("power", 40), // 파워 (20-60)
+            social: generateConsistentValue("social", 50), // 소셜 (30-70)
         };
     };
 
@@ -47,12 +151,24 @@ const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
     // 성격 특성 막대 그래프 표시
     const renderPersonalityBars = () => {
         const traits = {
-            extrovert: persona.personality?.includes("외향적") ? 80 : 30,
-            introvert: persona.personality?.includes("내향적") ? 80 : 30,
-            analytical: persona.personality?.includes("분석적") ? 80 : 40,
-            creative: persona.personality?.includes("창의적") ? 80 : 40,
-            organized: persona.personality?.includes("계획적") ? 80 : 30,
-            flexible: persona.personality?.includes("유연한") ? 80 : 40,
+            extrovert: persona.personality?.includes("외향적")
+                ? 80
+                : generateConsistentValue("extrovert", 30),
+            introvert: persona.personality?.includes("내향적")
+                ? 80
+                : generateConsistentValue("introvert", 30),
+            analytical: persona.personality?.includes("분석적")
+                ? 80
+                : generateConsistentValue("analytical", 40),
+            creative: persona.personality?.includes("창의적")
+                ? 80
+                : generateConsistentValue("creative", 40),
+            organized: persona.personality?.includes("계획적")
+                ? 80
+                : generateConsistentValue("organized", 30),
+            flexible: persona.personality?.includes("유연한")
+                ? 80
+                : generateConsistentValue("flexible", 40),
         };
 
         return (
@@ -209,39 +325,18 @@ const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
                                 {persona.goals}
                             </p>
                             <ul className="bullet-list">
-                                <li>
-                                    수입/시간에 투자 대비 위해 목표계획 구매를
-                                    원한다
-                                </li>
-                                <li>자원한 구매를 원한다</li>
-                                <li>
-                                    포인트나 무료로 즐거서 예대를 받길 원한다
-                                </li>
-                                <li>
-                                    키앱에서는 이벤트를 놓치지 않고 참고
-                                    싶어한다
-                                </li>
+                                {goalItems.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                ))}
                             </ul>
                         </div>
 
                         <div className="persona-section">
                             <h3 className="persona-section-title">불만사항</h3>
                             <ul className="bullet-list">
-                                <li>
-                                    정실시간을 손님이 틀리게 카페 어웨이 여한다
-                                </li>
-                                <li>
-                                    다른 접이 역활 공대, 우왕수 있는 허켄 조오런
-                                    전락하거나 불현다
-                                </li>
-                                <li>
-                                    너비게이션 값, 우화언 지시들 환 한일 좋계
-                                    저롱는 정우 만흥
-                                </li>
-                                <li>
-                                    기존 너비게이션이 조모치의 운전술려네 믿막지
-                                    있지 않음
-                                </li>
+                                {frustrationItems.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                ))}
                             </ul>
                         </div>
 
@@ -276,7 +371,12 @@ const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
                                 <div className="channel-bar-container">
                                     <div
                                         className="channel-bar-fill"
-                                        style={{ width: "30%" }}
+                                        style={{
+                                            width: `${generateConsistentValue(
+                                                "trad_ad",
+                                                30
+                                            )}%`,
+                                        }}
                                     ></div>
                                 </div>
                             </div>
@@ -287,7 +387,12 @@ const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
                                 <div className="channel-bar-container">
                                     <div
                                         className="channel-bar-fill"
-                                        style={{ width: "85%" }}
+                                        style={{
+                                            width: `${generateConsistentValue(
+                                                "social",
+                                                85
+                                            )}%`,
+                                        }}
                                     ></div>
                                 </div>
                             </div>
@@ -296,7 +401,12 @@ const PersonaCard = ({ persona, isSelected, onSelect, onChatStart }) => {
                                 <div className="channel-bar-container">
                                     <div
                                         className="channel-bar-fill"
-                                        style={{ width: "65%" }}
+                                        style={{
+                                            width: `${generateConsistentValue(
+                                                "recommendation",
+                                                65
+                                            )}%`,
+                                        }}
                                     ></div>
                                 </div>
                             </div>
