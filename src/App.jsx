@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - 수정된 버전
 import { useState, useEffect } from "react";
 import PersonaGenerator from "./components/PersonaGenerator";
 import ConsultantChatbot from "./components/ConsultantChatbot";
@@ -57,7 +57,7 @@ function App() {
     };
 
     return (
-        <div>
+        <div className="app-wrapper">
             <header className="header">
                 <div className="container">
                     <h1 className="header-title">AI 기반 비즈니스 솔루션</h1>

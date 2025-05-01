@@ -45,6 +45,7 @@ const PersonaChat = ({ persona, onBack }) => {
     });
 
     const chatContainerRef = useRef(null);
+    const inputRef = useRef(null);
 
     // 채팅창 자동 스크롤
     useEffect(() => {
@@ -53,6 +54,13 @@ const PersonaChat = ({ persona, onBack }) => {
                 chatContainerRef.current.scrollHeight;
         }
     }, [chatHistory]);
+
+    // 입력 필드 포커스
+    useEffect(() => {
+        if (inputRef.current && !isLoading) {
+            inputRef.current.focus();
+        }
+    }, [isLoading]);
 
     // 사용자 입력 처리
     const handleSendMessage = async (e) => {
@@ -225,11 +233,11 @@ const PersonaChat = ({ persona, onBack }) => {
                                     className="chat-avatar"
                                 />
                                 <div className="message-bubble loading-bubble">
-                                    <span className="typing-indicator">
+                                    <div className="typing-indicator">
                                         <span className="dot"></span>
                                         <span className="dot"></span>
                                         <span className="dot"></span>
-                                    </span>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -241,6 +249,7 @@ const PersonaChat = ({ persona, onBack }) => {
                     >
                         <input
                             type="text"
+                            ref={inputRef}
                             value={userInput}
                             onChange={(e) => setUserInput(e.target.value)}
                             placeholder={`${persona.name}에게 메시지 보내기...`}

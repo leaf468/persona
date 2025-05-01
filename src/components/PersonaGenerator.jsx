@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { generateMultiplePersonas } from "../services/openAiService";
 import PersonaSelection from "./PersonaSelection";
 import PersonaChat from "./PersonaChat";
+import ChatInputForm from "./ChatInputForm";
 import "../styles/App.css";
 
 // 목표와 불만 사항을 다양하게 생성하는 함수
@@ -58,6 +59,7 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
     const [targetCustomer, setTargetCustomer] = useState("");
     const [problem, setProblem] = useState("");
     const [solution, setSolution] = useState("");
+    const [userInput, setUserInput] = useState(""); // 사용자 입력 상태 추가
 
     // 채팅 및 페르소나 상태 관리
     const [messages, setMessages] = useState([]);
@@ -71,6 +73,7 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
 
     // 자동 스크롤을 위한 ref
     const chatContainerRef = useRef(null);
+    const inputRef = useRef(null); // 입력창에 대한 ref 추가
 
     // 통계 데이터 요약 상태
     const [statsSummary, setStatsSummary] = useState({
@@ -172,10 +175,18 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
         }
     }, [messages]);
 
-    // 사용자 입력 처리
+    // 페이지 로드 후 처리
+    useEffect(() => {
+        if (!chatMode && personas.length === 0) {
+            // 초기 로드 시 필요한 처리를 여기에 추가
+        }
+    }, [chatMode, personas]);
+
+    // ChatInputForm 컴포넌트에서 관리하므로 여기서는 삭제
+
+    // 사용자 입력 처리 (onSubmit)
     const handleUserInput = async (e) => {
         e.preventDefault();
-        const userInput = e.target.message.value;
         if (!userInput.trim()) return;
 
         // 현재 단계에 맞는 상태 업데이트
@@ -186,7 +197,7 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
         // 메시지 추가
         const newMessages = [...messages, { role: "user", content: userInput }];
         setMessages(newMessages);
-        e.target.message.value = "";
+        setUserInput(""); // 입력 필드 비우기
 
         // 다음 단계로 이동 또는 페르소나 생성
         if (currentStep < steps.length - 1) {
@@ -200,6 +211,10 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
                         content: steps[currentStep + 1].question,
                     },
                 ]);
+                // 입력 필드에 포커스
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                }
             }, 500);
         } else {
             // 페르소나 생성 단계
@@ -311,6 +326,7 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
         setProblem("");
         setSolution("");
         setCurrentStep(0);
+        setUserInput("");
         setMessages([
             {
                 role: "assistant",
@@ -324,8 +340,6 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
     const selectedPersona = selectedPersonaId
         ? personas.find((p) => p.id === selectedPersonaId)
         : null;
-
-    console.log("현재 상태:", { chatMode, selectedPersonaId, selectedPersona });
 
     // 통계 데이터 요약 렌더링
     const renderStatsSummary = () => {
@@ -422,35 +436,26 @@ const PersonaGenerator = ({ statsData, onChatStateChange }) => {
                                         </span>
                                     </div>
                                 ))}
+
                                 {loading && (
-                                    <div className="loading">
-                                        <div className="spinner"></div>
-                                        <p className="loading-text">
-                                            페르소나 생성 중...
-                                        </p>
+                                    <div className="message message-assistant">
+                                        <span className="message-content message-content-assistant">
+                                            <div className="typing-indicator">
+                                                <span className="dot"></span>
+                                                <span className="dot"></span>
+                                                <span className="dot"></span>
+                                            </div>
+                                        </span>
                                     </div>
                                 )}
                             </div>
 
-                            <form
+                            <ChatInputForm
+                                userInput={userInput}
+                                setUserInput={setUserInput}
                                 onSubmit={handleUserInput}
-                                className="chat-form"
-                            >
-                                <input
-                                    type="text"
-                                    name="message"
-                                    className="chat-input"
-                                    placeholder="메시지를 입력하세요..."
-                                    disabled={loading}
-                                />
-                                <button
-                                    type="submit"
-                                    className="chat-button"
-                                    disabled={loading}
-                                >
-                                    전송
-                                </button>
-                            </form>
+                                loading={loading}
+                            />
                         </div>
                     </div>
 
