@@ -12,6 +12,8 @@
     cursor: pointer;
     margin: 0; /* 여백 제거 */
     width: 100%; /* 전체 너비 사용 */
+    box-sizing: border-box; /* 패딩과 보더를 너비에 포함 */
+    max-width: 100%; /* 최대 너비 제한 */
 }
 
 .persona-card:hover {
@@ -28,17 +30,21 @@
 .persona-header {
     padding: 1.5rem;
     color: white;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .persona-profile {
     display: flex;
     align-items: center;
+    flex-wrap: nowrap; /* 줄바꿈 방지 */
 }
 
 .persona-avatar-container {
     position: relative;
     width: 5rem;
     height: 5rem;
+    flex-shrink: 0; /* 크기 축소 방지 */
 }
 
 .persona-avatar-loading {
@@ -78,17 +84,27 @@
 }
 
 .persona-info {
-    margin-left: 1rem;
+    margin-left: 3rem;
+    padding-left: 5vh;
+    /* 오버플로우 텍스트 관리 */
+    overflow: hidden;
+    min-width: 0;
 }
 
 .persona-name {
     font-size: 1.5rem;
     font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .persona-meta {
     color: rgba(255, 255, 255, 0.9);
     font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .persona-body-preview {
@@ -115,11 +131,14 @@
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .persona-tabs {
     display: flex;
     border-bottom: 1px solid var(--border-color, #e5e7eb);
+    width: 100%;
 }
 
 .tab-button {
@@ -132,6 +151,7 @@
     color: var(--text-color, #1f2937);
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .tab-button:hover {
@@ -148,10 +168,13 @@
     padding: 1.5rem;
     overflow-y: auto;
     flex-grow: 1;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .persona-section {
     margin-bottom: 1.5rem;
+    width: 100%;
 }
 
 .persona-section:last-child {
@@ -180,6 +203,8 @@
     padding-left: 1rem;
     margin-top: 0.5rem;
     font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .quotes-section {
@@ -188,12 +213,14 @@
 
 .personality-bars {
     margin-top: 1rem;
+    width: 100%;
 }
 
 .personality-bar-item {
     display: flex;
     align-items: center;
     margin-bottom: 0.75rem;
+    width: 100%;
 }
 
 .bar-label {
@@ -201,6 +228,7 @@
     color: var(--light-text, #6b7280);
     width: 3rem;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .bar-container {
@@ -219,6 +247,7 @@
 
 .motivation-chart {
     margin-top: 1.5rem;
+    width: 100%;
 }
 
 .chart-title {
@@ -232,12 +261,14 @@
     display: flex;
     align-items: center;
     margin-bottom: 0.75rem;
+    width: 100%;
 }
 
 .motivation-label {
     width: 3rem;
     font-size: 0.75rem;
     color: var(--light-text, #6b7280);
+    flex-shrink: 0;
 }
 
 .motivation-bar-container {
@@ -262,12 +293,14 @@
 
 .brands-section {
     margin-bottom: 2rem;
+    width: 100%;
 }
 
 .brands-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.75rem;
+    width: 100%;
 }
 
 .brand-item {
@@ -305,18 +338,21 @@
 .preferred-channels {
     margin-top: 2rem;
     margin-bottom: 2rem;
+    width: 100%;
 }
 
 .channel-item {
     display: flex;
     align-items: center;
     margin-bottom: 0.75rem;
+    width: 100%;
 }
 
 .channel-label {
     width: 8rem;
     font-size: 0.75rem;
     color: var(--light-text, #6b7280);
+    flex-shrink: 0;
 }
 
 .channel-bar-container {
@@ -334,12 +370,14 @@
 
 .devices-section {
     margin-top: 1rem;
+    width: 100%;
 }
 
 .devices-container {
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
+    width: 100%;
 }
 
 .device-item {
@@ -354,6 +392,7 @@
     list-style-type: none;
     padding-left: 1.25rem;
     margin-top: 0.5rem;
+    width: 100%;
 }
 
 .bullet-list li {
@@ -378,6 +417,8 @@
     justify-content: space-between;
     gap: 0.5rem;
     border-top: 1px solid var(--border-color, #e5e7eb);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .button-light {
@@ -426,25 +467,25 @@
     }
 }
 
-/* 페르소나 선택 컴포넌트 스타일 수정 */
-.personas-container {
-    width: 100%;
-    max-width: 100%;
-    padding: 0 0.5rem; /* 좌우 여백 줄임 */
-}
+/* 반응형 디자인 개선 */
+@media (max-width: 768px) {
+    .persona-info {
+        max-width: 65%; /* 모바일에서 텍스트 영역 제한 */
+    }
 
-.personas-grid {
-    gap: 1rem; /* 카드 간 간격 줄임 */
-}
+    .tab-button {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+    }
 
-@media (min-width: 768px) {
-    .personas-grid {
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    .tab-content {
+        padding: 1rem;
     }
 }
 
-@media (min-width: 1280px) {
-    .personas-grid {
-        grid-template-columns: repeat(3, 1fr);
+/* 태블릿 크기 */
+@media (min-width: 769px) and (max-width: 1199px) {
+    .persona-info {
+        max-width: 70%;
     }
 }

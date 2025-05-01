@@ -1,7 +1,7 @@
 /* src/styles/ConsultantChatbot.css */
 
 .consultant-chatbot {
-    height: 70vh;
+    height: 80vh;
     display: flex;
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR",
@@ -208,13 +208,19 @@
 }
 
 .message-bubble {
-    padding: 0.75rem 1rem;
-    border-radius: 1rem;
-    max-width: 70%;
-    line-height: 1.5;
+    /* 형태 */
+    border-radius: 1rem; /* 둥근 모서리 */
+    max-width: 70%; /* 부모 너비의 70% 이내 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* 연한 그림자 */
+
+    /* 텍스트 배치 */
+    font-size: 0.9rem; /* 기본보다 살짝 작은 크기 */
+    line-height: 1.3; /* 줄간격을 폰트 크기의 1배로 */
     word-break: break-word;
     overflow-wrap: break-word;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    /* 내부 여백(세로 공간 줄이기) */
+    padding: 0.25rem 1rem; /* 위·아래 0.25rem, 좌·우 1rem */
 }
 
 .user-bubble {
@@ -238,7 +244,7 @@
 }
 
 .message-paragraph:last-child {
-    margin-bottom: 0;
+    margin-bottom: 0.75rem;
 }
 
 .system-message .message-bubble {
@@ -299,8 +305,8 @@
 
 .chat-input-form {
     display: flex;
-    padding: 1rem;
-    border-top: 1px solid var(--border-color, #e5e7eb);
+    padding: 1rem; /* 상·하·좌·우 패딩을 1rem으로 증가 */
+    border-top: 2px solid var(--border-color, #e5e7eb);
     background-color: white;
     position: relative;
     z-index: 5;

@@ -91,7 +91,10 @@ body {
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     min-height: 70vh;
-    overflow: hidden; /* 내부 컨텐츠가 바깥으로 넘치지 않도록 */
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* 로딩 상태 */
@@ -148,6 +151,7 @@ body {
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
+    max-width: 100%;
 }
 
 @media (min-width: 1024px) {
@@ -209,7 +213,7 @@ body {
     overflow: hidden; /* 오버플로우 방지 */
 }
 
-/* 메시지 컨테이너 스타일 */
+/* 메시지 컨테이너가 자동으로 확장되도록 설정 */
 .chat-messages {
     flex: 1;
     padding: 1rem;
@@ -289,11 +293,13 @@ body {
     display: flex;
     width: 100%;
     background-color: var(--card-bg, #ffffff);
-    position: relative;
+    position: sticky;
     bottom: 0;
     left: 0;
     z-index: 5;
     box-sizing: border-box;
+    height: 60px; /* 고정 높이 설정 */
+    flex-shrink: 0; /* 컨테이너가 축소되지 않도록 설정 */
 }
 
 .chat-input {
@@ -306,8 +312,11 @@ body {
     font-size: 0.875rem;
     min-height: 2.5rem;
     max-height: 2.5rem;
+    resize: none; /* 크기 조정 방지 */
+    overflow: hidden; /* 오버플로우 숨김 */
     box-sizing: border-box;
     outline: none;
+    line-height: 1.5;
 }
 
 .chat-input:focus {
@@ -470,12 +479,18 @@ body {
 
 /* 특별히 겹침 문제를 해결하기 위한 스타일 */
 .persona-generator .grid {
-    min-height: 70vh;
+    min-height: 90vh;
+    max-height: 0vh;
+    padding-top: 1vh;
 }
 
 .personas-container {
     width: 100%;
-    padding: 1rem;
+    max-width: 1200px; /* 최대 너비 설정 */
+    margin: 0 auto; /* 가운데 정렬 */
+    padding: 0 2rem; /* 좌우 여백 추가 */
+    box-sizing: border-box;
+    overflow-x: hidden; /* 가로 스크롤 방지 */
 }
 
 /* 로딩 인디케이터 개선 */
