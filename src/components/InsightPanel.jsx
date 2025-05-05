@@ -73,6 +73,31 @@ const InsightPanel = ({ insights, isLoading, fileData }) => {
                     </div>
                 </div>
 
+                {/* Survey Context Section */}
+                {insights.surveyContext && (
+                    <div className="survey-context">
+                        <h4>설문 맥락 정보</h4>
+                        <div className="context-grid">
+                            <div className="context-item">
+                                <span className="context-label">설문 목적</span>
+                                <span className="context-value">{insights.surveyContext.purpose}</span>
+                            </div>
+                            <div className="context-item">
+                                <span className="context-label">대상 고객층</span>
+                                <span className="context-value">{insights.surveyContext.targetAudience}</span>
+                            </div>
+                            <div className="context-item wide">
+                                <span className="context-label">주요 관심사</span>
+                                <div className="context-tags">
+                                    {insights.surveyContext.keyConcerns && insights.surveyContext.keyConcerns.map((concern, idx) => (
+                                        <span key={idx} className="context-tag">{concern}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="exec-summary">
                     <h4>주요 요약</h4>
                     <p>{insights.executiveSummary}</p>
@@ -126,6 +151,13 @@ const InsightPanel = ({ insights, isLoading, fileData }) => {
                                 <p className="insight-description">
                                     {insight.description}
                                 </p>
+
+                                {insight.actionableInsight && (
+                                    <div className="insight-actionable">
+                                        <h5>실행 가능한 인사이트:</h5>
+                                        <p className="actionable-text">{insight.actionableInsight}</p>
+                                    </div>
+                                )}
 
                                 {insight.relatedQuestions &&
                                     insight.relatedQuestions.length > 0 && (

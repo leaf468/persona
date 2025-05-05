@@ -24,6 +24,13 @@ export const generateInsights = async (processedData) => {
         // Organize insights into categories
         const organizedInsights = organizeInsights(insights);
 
+        // Extract survey context information
+        const surveyContext = insights.surveyContext || {
+            purpose: "설문의 목적을 파악할 수 없습니다.",
+            targetAudience: "대상 고객층을 확인할 수 없습니다.",
+            keyConcerns: ["파악된 주요 관심사가 없습니다."]
+        };
+
         // Add metadata
         return {
             totalResponses,
@@ -31,6 +38,7 @@ export const generateInsights = async (processedData) => {
             executiveSummary:
                 insights.executiveSummary ||
                 "데이터에서 주요 인사이트를 추출하는 중입니다.",
+            surveyContext: surveyContext,
             categories: [
                 { id: "general", name: "일반 인사이트" },
                 { id: "trends", name: "트렌드 분석" },
@@ -94,12 +102,33 @@ const prepareDataForAIAnalysis = (processedData) => {
 
     // Find potential correlations
     const correlations = findPotentialCorrelations(processedData);
+    
+    // Get raw text samples for text questions
+    const rawSamples = {};
+    if (processedData.rawData) {
+        // Find text-type questions
+        const textQuestions = processedData.questions.filter(q => q.type === "text");
+        
+        // For each text question, get up to 5 sample responses
+        textQuestions.forEach(question => {
+            const field = question.field;
+            const samples = processedData.rawData
+                .map(row => row[field])
+                .filter(text => text && text.trim().length > 0)
+                .slice(0, 5);  // Take just 5 samples
+                
+            if (samples.length > 0) {
+                rawSamples[question.id] = samples;
+            }
+        });
+    }
 
     return {
         totalResponses: processedData.totalRows,
         questionCount: processedData.questions.length,
         questions: questionSummaries,
         correlations: correlations,
+        rawSamples: rawSamples
     };
 };
 
@@ -200,20 +229,20 @@ const generateAIInsights = async (data) => {
                     }`,
                 },
                 body: JSON.stringify({
-                    model: "gpt-3.5-turbo", // Using GPT-3.5-Turbo as specified
+                    model: "gpt-4", // Using GPT-4 for better context understanding
                     messages: [
                         {
                             role: "system",
                             content:
-                                "You are an expert data analyst who specializes in extracting insights from survey data. Your task is to analyze the provided survey data summary and generate meaningful insights. Respond only in the JSON format specified in the prompt.",
+                                "You are an expert market researcher and data scientist who specializes in extracting meaningful insights from survey data. Your analysis goes beyond simple statistics to understand the deeper context, purpose, and implications of survey questions and responses. You excel at identifying patterns in natural language and connecting quantitative data with qualitative meaning. Respond only in the JSON format specified in the prompt.",
                         },
                         {
                             role: "user",
                             content: prompt,
                         },
                     ],
-                    temperature: 0.5,
-                    max_tokens: 2000,
+                    temperature: 0.4, // Slightly lower temperature for more focused responses
+                    max_tokens: 3000, // Increased token limit for more detailed analysis
                 }),
             }
         );
@@ -271,6 +300,14 @@ const createInsightPrompt = (data) => {
                 )}, 중앙값=${q.stats.median.toFixed(2)}\n`;
             }
 
+            // Add raw data sample for text analysis
+            if (q.type === "text" && data.rawSamples && data.rawSamples[q.id]) {
+                text += "\n텍스트 응답 샘플 (최대 5개):\n";
+                data.rawSamples[q.id].forEach((sample, idx) => {
+                    text += `- 응답 ${idx + 1}: "${sample}"\n`;
+                });
+            }
+
             return text;
         })
         .join("\n");
@@ -285,7 +322,14 @@ const createInsightPrompt = (data) => {
 
     // Create prompt
     return `
-다음 설문조사 데이터를 분석하여 의미 있는 인사이트를 추출해 주세요:
+다음 설문조사 데이터를 분석하여 의미 있는 인사이트를 추출해 주세요. 설문 맥락과 자연어 내용을 깊이 이해하여 단순한 점수 기반 분석을 넘어선 유의미한 인사이트를 도출하세요:
+
+# 설문조사 맥락 확인
+이 설문 데이터를 분석할 때는 다음 사항을 중요하게 고려하세요:
+1. 설문의 목적: 질문 내용을 분석하여 이 설문의 주요 목적과 대상 고객층을 파악하세요.
+2. 질문 간 관계: 개별 질문만 보지 말고, 질문들 간의 관계와 전체 설문의 흐름을 고려하세요.
+3. 응답자 세그멘테이션: 응답 패턴에 따라 응답자 그룹을 나누고, 각 그룹의 특성을 파악하세요.
+4. 질문 내용 분석: 질문의 표현, 형식, 어조 등을 분석하여 설문의 맥락과 의도를 이해하세요.
 
 # 데이터 요약
 총 응답자 수: ${data.totalResponses}명
@@ -300,15 +344,21 @@ ${correlationsText}
 다음 JSON 형식으로 응답해 주세요:
 \`\`\`json
 {
-    "executiveSummary": "설문 전체에 대한 요약 (3-4문장)",
+    "surveyContext": {
+        "purpose": "설문의 주요 목적 (설문 내용 분석 기반)",
+        "targetAudience": "설문의 대상 고객층/응답자층",
+        "keyConcerns": ["설문에서 다루는 주요 관심사/주제 1", "주요 관심사/주제 2", "..."]
+    },
+    "executiveSummary": "설문 전체에 대한 맥락을 포함한 요약 (3-4문장)",
     "insights": [
         {
             "id": "insight1",
             "title": "인사이트 제목",
-            "description": "인사이트 세부 설명 (3-5문장)",
+            "description": "인사이트 세부 설명 (3-5문장, 자연어 이해와 맥락 고려)",
             "category": "general|trends|segments|correlations|recommendations",
             "relatedQuestions": ["관련된 질문 내용1", "관련된 질문 내용2"],
             "confidenceLevel": 70,
+            "actionableInsight": "이 인사이트를 바탕으로 취할 수 있는 구체적인 행동",
             "recommendations": ["제안사항1", "제안사항2"]
         },
         {...}
@@ -316,7 +366,13 @@ ${correlationsText}
 }
 \`\`\`
 
-설문 데이터에 기반하여 최소 5개에서 최대 10개의 의미 있는 인사이트를 생성해 주세요. 각 인사이트는 데이터에서 관찰된 패턴, 트렌드, 또는 상관관계를 명확하게 설명해야 합니다. 신뢰도(confidenceLevel)는 0-100 사이의 숫자로 표현해 주세요.
+설문 데이터에 기반하여 최소 5개에서 최대 10개의 의미 있는 인사이트를 생성해 주세요. 
+각 인사이트는 다음 조건을 만족해야 합니다:
+
+1. 단순히 '높은 점수' 또는 '낮은 점수'만 기반으로 하지 않고, 질문의 자연어 내용과 응답 패턴을 깊이 분석하여 도출할 것
+2. 설문의 맥락과 목적에 맞는 실용적인 인사이트를 제공할 것
+3. 데이터에서 관찰된 패턴, 트렌드, 상관관계를 구체적인 맥락과 함께 설명할 것
+4. 각 인사이트가 "그래서 어떻게 해야 하는가?"라는 질문에 대한 답을 제공할 것
 
 카테고리는 다음과 같습니다:
 - general: 전반적인 응답 패턴에 관한 일반적인 인사이트
@@ -325,7 +381,7 @@ ${correlationsText}
 - correlations: 질문들 간의 관계나 상관관계
 - recommendations: 데이터 기반 제안사항
 
-가능한 구체적이고 실용적인 인사이트를 제공해 주세요.
+인사이트를 작성할 때 설문의 본질적인 목적과 맥락을 항상 고려하세요. 구체적이고, 실행 가능하며, 설문의 목적에 부합하는 인사이트를 제공해 주세요.
 `;
 };
 
@@ -343,121 +399,292 @@ const generateMockInsights = (data) => {
     const numericQuestions = data.questions.filter(
         (q) => q.type === "numeric" || q.type === "rating"
     );
+    const textQuestions = data.questions.filter(
+        (q) => q.type === "text"
+    );
 
-    // Create a basic executive summary
-    const executiveSummary = `이 설문조사는 총 ${totalResponses}명의 응답자와 ${
+    // Determine possible survey purpose based on question content
+    const surveyPurpose = determineSurveyPurpose(data.questions);
+    
+    // Create a basic executive summary with context
+    const executiveSummary = `이 설문조사는 ${surveyPurpose}를 목적으로 총 ${totalResponses}명의 응답자와 ${
         data.questionCount
     }개의 질문으로 구성되어 있습니다. 응답자들은 대체로 일관된 패턴을 보이며, 몇 가지 주요 트렌드가 관찰됩니다. 특히 ${
         multiChoiceQuestions.length > 0
             ? multiChoiceQuestions[0].text
             : "주요 카테고리 질문"
-    }에 대한 응답에서 뚜렷한 선호도를 보입니다.`;
+    }에 대한 응답에서 뚜렷한 선호도를 보입니다. 이 데이터를 바탕으로 구체적인 개선 방향과 전략적 인사이트를 도출할 수 있습니다.`;
+
+    // Create survey context object
+    const surveyContext = {
+        purpose: surveyPurpose,
+        targetAudience: getTargetAudience(data.questions),
+        keyConcerns: getKeyConcerns(data.questions)
+    };
 
     // Generate sample insights
     const insights = [
         {
             id: "insight1",
-            title: "주요 응답 패턴 발견",
+            title: "주요 응답 패턴에서 드러난 고객 선호도",
             description: `전체 응답자의 ${Math.round(
                 Math.random() * 30 + 50
-            )}%가 일관된 응답 패턴을 보입니다. 이는 설문 대상 그룹이 특정 주제에 대해 강한 의견 일치를 보인다는 것을 의미합니다. 특히 ${
+            )}%가 ${
                 multiChoiceQuestions.length > 0
                     ? multiChoiceQuestions[0].text
                     : "주요 질문"
-            }에 대한 응답에서 이러한 패턴이 뚜렷하게 나타납니다.`,
+            }에 대해 일관된 응답 패턴을 보입니다. 이는 설문 대상 그룹이 명확한 선호도와 니즈를 가지고 있음을 시사합니다. 이러한 패턴은 고객 세그먼트의 핵심 요구사항을 파악하고 맞춤형 솔루션을 개발하는 데 중요한 기반이 됩니다.`,
             category: "general",
             relatedQuestions: multiChoiceQuestions
                 .slice(0, 2)
                 .map((q) => q.text),
             confidenceLevel: 85,
+            actionableInsight: "명확한 고객 선호도를 바탕으로 맞춤형 제품/서비스 개발 전략 수립",
             recommendations: [
-                "이러한 의견 일치를 고려한 전략 수립",
-                "주요 응답 그룹을 대상으로 하는 추가 연구 진행",
+                "주요 선호도에 따른 제품/서비스 기능 우선순위화",
+                "타겟 고객층을 위한 마케팅 메시지 개발",
+                "핵심 선호 요소를 강화하는 사용자 경험 개선"
             ],
         },
         {
             id: "insight2",
-            title: "핵심 사용자 니즈 식별",
+            title: "고객 만족도 핵심 요소 발견",
             description: `응답자들이 가장 높은 점수를 준 영역은 ${
                 numericQuestions.length > 0
                     ? numericQuestions[0].text
                     : "주요 평가 항목"
-            }입니다. 이는 사용자들이 이 영역에 가장 큰 가치를 두고 있음을 시사합니다. 또한 이 항목은 다른 만족도 지표와도 강한 상관관계를 보입니다.`,
+            }로, 이는 고객 만족도에 가장 큰 영향을 미치는 요소임을 시사합니다. 이 영역은 고객 경험의 핵심 동인으로 작용하며, 전반적인 제품/서비스 평가에도 강한 상관관계를 보입니다. 고객 유지와 충성도 증대를 위해 이 요소를 강화하는 전략이 필요합니다.`,
             category: "trends",
             relatedQuestions: numericQuestions.slice(0, 2).map((q) => q.text),
             confidenceLevel: 78,
+            actionableInsight: "고객 만족도의 핵심 동인을 강화하는 제품/서비스 개선 전략 수립",
             recommendations: [
-                "이 영역에 대한 추가 개선에 자원 투자",
-                "마케팅 메시지에 이 강점 강조",
+                "핵심 만족 요소에 리소스 집중 투자",
+                "이 강점을 핵심 메시지로 활용한 마케팅 전략 개발",
+                "경쟁사와의 차별점으로 활용할 수 있는 방안 모색"
             ],
         },
         {
             id: "insight3",
-            title: "응답자 세그먼트 간 차이",
+            title: "고객 세그먼트별 차별화된 접근 필요성",
             description: `${
                 multiChoiceQuestions.length > 1
                     ? multiChoiceQuestions[1].text
-                    : "세그먼트 질문"
-            }에 따라 응답 패턴에 유의미한 차이가 있습니다. 특히 ${
-                multiChoiceQuestions.length > 1 ? "특정 그룹" : "그룹 A"
-            }는 다른 그룹보다 ${
+                    : "고객 세그먼트"
+            }에 따라 선호도와 만족도에 뚜렷한 차이가 있습니다. 특히 ${
+                multiChoiceQuestions.length > 1 ? "특정 그룹" : "주요 고객층"
+            }은 ${
                 numericQuestions.length > 0
                     ? numericQuestions[0].text
-                    : "특정 항목"
-            }에 대해 20% 더 높은 점수를 줬습니다.`,
+                    : "핵심 기능"
+            }에 대해 다른 그룹보다 20% 더 높은 중요도를 부여합니다. 이는 각 세그먼트별 차별화된 접근 전략이 필요함을 시사합니다.`,
             category: "segments",
             relatedQuestions: [
                 ...multiChoiceQuestions.slice(0, 1),
                 ...numericQuestions.slice(0, 1),
             ].map((q) => q.text),
             confidenceLevel: 72,
+            actionableInsight: "세그먼트별 맞춤형 제품/서비스 전략 개발",
             recommendations: [
-                "각 세그먼트에 맞춤화된 접근 방식 개발",
-                "가장 반응이 좋은 세그먼트에 집중",
+                "주요 세그먼트별 사용자 여정 맵 개발",
+                "각 세그먼트의 핵심 니즈에 맞춘 기능 최적화",
+                "세그먼트별 차별화된 마케팅 메시지와 채널 활용"
             ],
         },
         {
             id: "insight4",
-            title: "상관관계 발견",
+            title: "제품/서비스 기능 간 시너지 효과",
             description: `${
                 numericQuestions.length > 1
-                    ? `${numericQuestions[0].text}와(과) ${numericQuestions[1].text} 간에`
-                    : "두 주요 지표 간에"
-            } 강한 양의 상관관계가 있습니다. 이는 한 영역의 개선이 다른 영역의 만족도에도 긍정적인 영향을 미칠 수 있음을 시사합니다.`,
+                    ? `${numericQuestions[0].text}와(과) ${numericQuestions[1].text}`
+                    : "주요 제품/서비스 기능들"
+            } 간에 강한 상관관계가 발견되었습니다. 이는 두 영역이 고객 경험에서 서로 강화하는 효과가 있음을 의미합니다. 이런 시너지 효과를 활용하면 개선 노력의 효율성을 높이고 전반적인 고객 만족도를 크게 향상시킬 수 있습니다.`,
             category: "correlations",
             relatedQuestions: numericQuestions.slice(0, 2).map((q) => q.text),
             confidenceLevel: 68,
+            actionableInsight: "상호 강화 효과가 있는 기능들을 통합적으로 개선하는 전략 수립",
             recommendations: [
-                "두 영역의 연계 전략 개발",
-                "통합 개선 이니셔티브 고려",
+                "두 기능의 통합적 사용자 경험 디자인",
+                "시너지 효과를 최대화하는 마케팅 패키지 개발",
+                "두 영역을 함께 강조하는 사용자 교육 자료 제작"
             ],
         },
         {
             id: "insight5",
-            title: "개선 우선순위 영역",
-            description: `응답자들이 가장 낮은 점수를 준 영역은 ${
+            title: "시급한 개선이 필요한 고객 경험 요소",
+            description: `응답자들이 가장 낮은 만족도를 보인 영역은 ${
                 numericQuestions.length > 2
                     ? numericQuestions[2].text
                     : "개선 필요 영역"
-            }입니다. 이 영역은 전반적인 만족도에도 상당한 영향을 미치는 것으로 보입니다. 특히 ${
+            }입니다. 이 영역은 전반적인 고객 경험에 부정적 영향을 미치고 있으며, 특히 ${
                 multiChoiceQuestions.length > 0
-                    ? "특정 사용자 그룹"
-                    : "주요 사용자 그룹"
-            }에서 이 문제가 두드러집니다.`,
+                    ? "핵심 고객층"
+                    : "충성도 높은 사용자 그룹"
+            }에서 이 문제가 두드러집니다. 이 영역의 개선은 고객 유지 및 만족도 향상에 직접적인 효과를 가져올 것입니다.`,
             category: "recommendations",
             relatedQuestions: numericQuestions.slice(0, 3).map((q) => q.text),
             confidenceLevel: 90,
+            actionableInsight: "핵심 고객층의 불만족 요소에 대한 즉각적인 개선 프로젝트 수립",
             recommendations: [
-                "이 영역에 대한 즉각적인 개선 조치",
-                "사용자 피드백을 수집하는 추가 연구 진행",
+                "해당 영역 개선을 위한 전담 팀 구성",
+                "단기적 해결책과 장기적 개선 방안 병행 추진",
+                "개선 후 효과 측정을 위한 후속 고객 피드백 수집 계획 수립"
             ],
         },
     ];
 
+    // Add text-based insight if text questions exist
+    if (textQuestions.length > 0) {
+        insights.push({
+            id: "insight6",
+            title: "고객 피드백에서 발견된 개선 기회",
+            description: `자유 응답형 질문인 ${
+                textQuestions[0].text
+            }에서 수집된 고객 의견을 분석한 결과, 반복적으로 언급되는 몇 가지 주요 테마가 있습니다. 특히 사용자 경험의 일관성과 직관성에 대한 피드백이 두드러집니다. 이러한 질적 데이터는 정량적 분석에서 발견하기 어려운 구체적인 개선 포인트를 제공합니다.`,
+            category: "recommendations",
+            relatedQuestions: textQuestions.slice(0, 1).map((q) => q.text),
+            confidenceLevel: 75,
+            actionableInsight: "사용자 피드백에서 파악된 구체적 개선점을 제품/서비스 개발 로드맵에 반영",
+            recommendations: [
+                "주요 피드백 테마에 따른 사용자 경험 재설계",
+                "자주 언급되는 불편사항에 대한 심층 사용자 인터뷰 진행",
+                "개선 우선순위를 피드백 빈도와 영향력에 기반하여 설정"
+            ],
+        });
+    }
+
     return {
         executiveSummary,
+        surveyContext,
         insights,
     };
+};
+
+/**
+ * Determine the likely purpose of the survey based on question content
+ * @param {Array} questions - Array of question objects
+ * @returns {string} - Likely survey purpose
+ */
+const determineSurveyPurpose = (questions) => {
+    // Count keyword occurrences in question texts
+    const keywords = {
+        "satisfaction": 0,
+        "experience": 0,
+        "preference": 0,
+        "opinion": 0,
+        "usage": 0,
+        "purchase": 0,
+        "만족": 0,
+        "경험": 0,
+        "선호": 0,
+        "의견": 0,
+        "사용": 0,
+        "구매": 0,
+        "추천": 0
+    };
+
+    questions.forEach(q => {
+        const text = q.text.toLowerCase();
+        Object.keys(keywords).forEach(keyword => {
+            if (text.includes(keyword)) {
+                keywords[keyword]++;
+            }
+        });
+    });
+
+    // Determine primary survey purpose based on keyword frequency
+    if (keywords["만족"] > 0 || keywords["satisfaction"] > 0) {
+        return "고객 만족도 측정";
+    } else if (keywords["경험"] > 0 || keywords["experience"] > 0) {
+        return "사용자 경험 평가";
+    } else if (keywords["선호"] > 0 || keywords["preference"] > 0) {
+        return "고객 선호도 파악";
+    } else if (keywords["구매"] > 0 || keywords["purchase"] > 0) {
+        return "구매 결정 요인 분석";
+    } else if (keywords["추천"] > 0) {
+        return "제품/서비스 추천 가능성 평가";
+    } else {
+        return "고객 의견 및 피드백 수집";
+    }
+};
+
+/**
+ * Determine the likely target audience of the survey
+ * @param {Array} questions - Array of question objects
+ * @returns {string} - Likely target audience
+ */
+const getTargetAudience = (questions) => {
+    // Look for demographic questions
+    const demographicKeywords = ["연령", "나이", "성별", "직업", "학력", "소득", "age", "gender", "occupation", "education", "income"];
+    
+    for (const q of questions) {
+        const text = q.text.toLowerCase();
+        for (const keyword of demographicKeywords) {
+            if (text.includes(keyword)) {
+                return "다양한 인구통계학적 특성을 가진 제품/서비스 사용자";
+            }
+        }
+    }
+
+    // Look for user/customer keywords
+    const userKeywords = ["사용자", "고객", "회원", "user", "customer", "member"];
+    for (const q of questions) {
+        const text = q.text.toLowerCase();
+        for (const keyword of userKeywords) {
+            if (text.includes(keyword)) {
+                return "현재 제품/서비스 사용자";
+            }
+        }
+    }
+
+    return "제품/서비스의 잠재 및 현재 사용자";
+};
+
+/**
+ * Determine key concerns of the survey
+ * @param {Array} questions - Array of question objects
+ * @returns {Array} - Key concerns
+ */
+const getKeyConcerns = (questions) => {
+    const concerns = new Set();
+    
+    // Look for common concern keywords
+    const concernKeywords = {
+        "품질": "제품/서비스 품질",
+        "quality": "제품/서비스 품질",
+        "가격": "가격 적정성",
+        "price": "가격 적정성",
+        "만족": "고객 만족도",
+        "satisfaction": "고객 만족도",
+        "편리": "사용 편의성",
+        "convenience": "사용 편의성",
+        "문제": "문제점 및 개선사항",
+        "issue": "문제점 및 개선사항",
+        "개선": "문제점 및 개선사항",
+        "improvement": "문제점 및 개선사항",
+        "기능": "주요 기능 평가",
+        "feature": "주요 기능 평가",
+        "디자인": "디자인 및 UI/UX",
+        "design": "디자인 및 UI/UX",
+        "추천": "추천 의향",
+        "recommend": "추천 의향"
+    };
+
+    questions.forEach(q => {
+        const text = q.text.toLowerCase();
+        Object.entries(concernKeywords).forEach(([keyword, concern]) => {
+            if (text.includes(keyword)) {
+                concerns.add(concern);
+            }
+        });
+    });
+
+    // If no specific concerns found
+    if (concerns.size === 0) {
+        return ["전반적인 제품/서비스 평가", "사용자 경험", "개선 사항"];
+    }
+
+    return Array.from(concerns);
 };
 
 /**
@@ -474,6 +701,13 @@ const organizeInsights = (rawInsights) => {
         return [];
     }
 
+    // Store the survey context information if available
+    if (rawInsights.surveyContext) {
+        // We could store this in a global state or return it separately
+        // For now, we'll log it so it's available for debugging
+        console.log("Survey Context:", rawInsights.surveyContext);
+    }
+
     // Process each insight
     return rawInsights.insights.map((insight, index) => {
         return {
@@ -485,9 +719,12 @@ const organizeInsights = (rawInsights) => {
                 ? insight.relatedQuestions
                 : [],
             confidenceLevel: insight.confidenceLevel || 50,
+            actionableInsight: insight.actionableInsight || "",
             recommendations: Array.isArray(insight.recommendations)
                 ? insight.recommendations
                 : [],
+            // Add context information to each insight if available
+            context: rawInsights.surveyContext || null
         };
     });
 };
@@ -513,10 +750,18 @@ const generateDefaultInsights = (processedData) => {
     // Generate mock insights
     const mockInsights = generateMockInsights(mockData);
 
+    // Default survey context based on available questions
+    const defaultSurveyContext = {
+        purpose: "이 설문조사는 사용자 만족도 및 선호도 파악을 위한 것으로 보입니다.",
+        targetAudience: "제품 또는 서비스의 사용자",
+        keyConcerns: ["사용자 만족도", "개선 요구사항", "선호도"]
+    };
+
     return {
         totalResponses: processedData.totalRows,
         questionCount: processedData.questions.length,
         executiveSummary: mockInsights.executiveSummary,
+        surveyContext: defaultSurveyContext,
         categories: [
             { id: "general", name: "일반 인사이트" },
             { id: "trends", name: "트렌드 분석" },

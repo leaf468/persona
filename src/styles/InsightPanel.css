@@ -49,6 +49,65 @@
     color: var(--text-color, #1f2937);
 }
 
+.survey-context {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.survey-context h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    margin: 0 0 1rem;
+}
+
+.context-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.context-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.context-item.wide {
+    grid-column: span 2;
+}
+
+.context-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--light-text, #6b7280);
+    margin-bottom: 0.5rem;
+}
+
+.context-value {
+    font-size: 0.938rem;
+    color: var(--text-color, #1f2937);
+    line-height: 1.5;
+}
+
+.context-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.context-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: #f3f4f6;
+    border-radius: 9999px;
+    font-size: 0.813rem;
+    color: var(--text-color, #1f2937);
+}
+
 .exec-summary {
     background-color: white;
     border-radius: 0.5rem;
@@ -210,22 +269,36 @@
     margin: 0 0 1.5rem;
 }
 
+.insight-actionable,
 .insight-related-questions,
 .insight-recommendations {
     margin-bottom: 1.5rem;
 }
 
+.insight-actionable:last-child,
 .insight-related-questions:last-child,
 .insight-recommendations:last-child {
     margin-bottom: 0;
 }
 
+.insight-actionable h5,
 .insight-related-questions h5,
 .insight-recommendations h5 {
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-color, #1f2937);
     margin: 0 0 0.5rem;
+}
+
+.insight-actionable .actionable-text {
+    padding: 0.75rem 1rem;
+    background-color: #f0f9ff;
+    border-left: 3px solid #38bdf8;
+    border-radius: 0.25rem;
+    color: #0c4a6e;
+    font-size: 0.938rem;
+    line-height: 1.5;
+    margin: 0;
 }
 
 .insight-related-questions ul,
@@ -276,6 +349,22 @@
         gap: 0.75rem;
     }
 
+    .context-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .context-item.wide {
+        grid-column: span 1;
+    }
+
+    .survey-context {
+        padding: 1rem;
+    }
+
+    .exec-summary {
+        padding: 1rem;
+    }
+
     .insight-header {
         padding: 1rem;
     }
@@ -291,5 +380,10 @@
 
     .insight-footer {
         padding: 0.75rem 1rem;
+    }
+
+    .insight-actionable .actionable-text {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
     }
 }
