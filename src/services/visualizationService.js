@@ -14,13 +14,16 @@ export const generateVisualizations = async (processedData) => {
 
         const visualizations = [];
 
+        // Analyze the overall data context before creating individual visualizations
+        const dataContext = analyzeDataContext(processedData);
+
         // Generate visualizations for each question
         for (const question of processedData.questions) {
             // Skip questions with too few responses
             if (question.responseCount < 3) continue;
 
-            // Determine the best visualization type for this question
-            const vizType = determineVisualizationType(question);
+            // Determine the best visualization type based on question content and data context
+            const vizType = determineVisualizationType(question, dataContext);
 
             if (vizType) {
                 const visualization = await createVisualization(
@@ -33,13 +36,20 @@ export const generateVisualizations = async (processedData) => {
             }
         }
 
-        // Add relationship visualizations if there are multiple appropriate questions
+        // Generate content-based relationship visualizations
         const relationshipViz = await generateRelationshipVisualizations(
             processedData.questions,
-            processedData.rawData
-        );
+            processedData.rawData,
+            dataContext
+        ) || [];
 
-        return [...visualizations, ...relationshipViz];
+        // Generate thematic visualizations based on content patterns
+        const thematicViz = await generateThematicVisualizations(
+            processedData,
+            dataContext
+        ) || [];
+
+        return [...visualizations, ...relationshipViz, ...thematicViz];
     } catch (error) {
         console.error("시각화 생성 중 오류:", error);
         throw error;
@@ -47,13 +57,200 @@ export const generateVisualizations = async (processedData) => {
 };
 
 /**
+ * Analyze the overall data context to inform visualization decisions
+ * @param {Object} processedData - The processed survey data
+ * @returns {Object} - Data context information
+ */
+const analyzeDataContext = (processedData) => {
+    const dataContext = {
+        questionsByType: {},
+        repeatedTerms: {},
+        questionGroups: [],
+        contentPatterns: {},
+        overallDistribution: {},
+        textResponsePatterns: {}
+    };
+    
+    // Count questions by type
+    processedData.questions.forEach(question => {
+        dataContext.questionsByType[question.type] = 
+            (dataContext.questionsByType[question.type] || 0) + 1;
+    });
+    
+    // Identify common terms across questions for thematic grouping
+    const allQuestionTexts = processedData.questions.map(q => q.text.toLowerCase());
+    const termFrequency = {};
+    
+    allQuestionTexts.forEach(text => {
+        // Split into words and remove common words
+        const words = text.split(/\s+/).filter(word => 
+            word.length > 3 && 
+            !["what", "when", "where", "which", "this", "that", "these", "those", "with", "your"].includes(word)
+        );
+        
+        words.forEach(word => {
+            termFrequency[word] = (termFrequency[word] || 0) + 1;
+        });
+    });
+    
+    // Keep terms that appear in multiple questions
+    Object.keys(termFrequency).forEach(term => {
+        if (termFrequency[term] >= 2) {
+            dataContext.repeatedTerms[term] = termFrequency[term];
+        }
+    });
+    
+    // Group related questions based on content similarity
+    for (let i = 0; i < processedData.questions.length; i++) {
+        const q1 = processedData.questions[i];
+        const relatedQuestions = [];
+        
+        for (let j = 0; j < processedData.questions.length; j++) {
+            if (i === j) continue;
+            
+            const q2 = processedData.questions[j];
+            const commonTermCount = countCommonTerms(q1.text, q2.text);
+            
+            if (commonTermCount >= 2) {
+                relatedQuestions.push({
+                    id: q2.id,
+                    text: q2.text,
+                    commonTermCount
+                });
+            }
+        }
+        
+        if (relatedQuestions.length > 0) {
+            dataContext.questionGroups.push({
+                baseQuestion: {
+                    id: q1.id,
+                    text: q1.text
+                },
+                relatedQuestions
+            });
+        }
+    }
+    
+    // Analyze text responses for patterns
+    const textQuestions = processedData.questions.filter(q => q.type === "text");
+    
+    textQuestions.forEach(question => {
+        const responses = [];
+        const field = question.field;
+        
+        processedData.rawData.forEach(row => {
+            if (row[field] && typeof row[field] === 'string' && row[field].trim()) {
+                responses.push(row[field]);
+            }
+        });
+        
+        if (responses.length > 0) {
+            // Check for numeric patterns in text responses
+            const containsNumbers = responses.some(text => /\d+(\.\d+)?%?/.test(text));
+            
+            // Check for list-like responses
+            const containsLists = responses.some(text => 
+                /(\d+[\.\)]\s|\-\s|•\s)/.test(text) || 
+                /first.*second.*third/i.test(text)
+            );
+            
+            // Calculate average response length
+            const avgLength = responses.reduce((sum, text) => sum + text.length, 0) / responses.length;
+            
+            dataContext.textResponsePatterns[question.id] = {
+                containsNumbers,
+                containsLists,
+                avgResponseLength: avgLength,
+                totalResponses: responses.length
+            };
+        }
+    });
+    
+    return dataContext;
+};
+
+/**
+ * Count common terms between two text strings
+ * @param {string} text1 - First text
+ * @param {string} text2 - Second text
+ * @returns {number} - Count of common meaningful terms
+ */
+const countCommonTerms = (text1, text2) => {
+    const words1 = new Set(text1.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    const words2 = new Set(text2.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    
+    // Find intersection
+    return [...words1].filter(word => words2.has(word)).length;
+};
+
+/**
  * Determine the most appropriate visualization type for a question
  * @param {Object} question - The question object
+ * @param {Object} dataContext - Overall data context
  * @returns {string|null} - Visualization type or null if not visualizable
  */
-const determineVisualizationType = (question) => {
-    const { type, uniqueValues, responseCount } = question;
-
+const determineVisualizationType = (question, dataContext) => {
+    const { type, uniqueValues, responseCount, text } = question;
+    
+    // Check for specific content patterns that might override standard visualization rules
+    
+    // For text questions, check pattern of responses
+    if (type === "text" && dataContext.textResponsePatterns[question.id]) {
+        const patterns = dataContext.textResponsePatterns[question.id];
+        
+        // If text responses contain numbers and they're likely percentages or metrics
+        if (patterns.containsNumbers) {
+            return "keywordMetrics"; // A special visualization that extracts numbers from text
+        }
+        
+        // If text responses look like lists or contain multiple bullet points
+        if (patterns.containsLists) {
+            return "structuredList"; // A visualization that preserves list structure
+        }
+        
+        // For very short text responses that behave more like categories
+        if (patterns.avgResponseLength < 20) {
+            return "categorizedResponses"; // Group similar short responses
+        }
+    }
+    
+    // See if the question text indicates ranking or preference
+    const questionTextLower = text.toLowerCase();
+    if (questionTextLower.includes("rank") || 
+        questionTextLower.includes("order") || 
+        questionTextLower.includes("preference") ||
+        questionTextLower.includes("순위") ||
+        questionTextLower.includes("선호도")) {
+        
+        if (type === "multiple_choice" || type === "categorical") {
+            return "horizontalBar"; // Better for showing rankings
+        }
+    }
+    
+    // Check for comparison-focused questions
+    if (questionTextLower.includes("compare") || 
+        questionTextLower.includes("difference") || 
+        questionTextLower.includes("versus") || 
+        questionTextLower.includes("vs") ||
+        questionTextLower.includes("비교")) {
+        
+        if (type === "multiple_choice" || type === "categorical") {
+            return "groupedBar"; // Better for showing comparisons
+        }
+    }
+    
+    // If the question appears to be about distribution or spread
+    if (questionTextLower.includes("distribution") || 
+        questionTextLower.includes("spread") || 
+        questionTextLower.includes("range") ||
+        questionTextLower.includes("분포")) {
+        
+        if (type === "numeric") {
+            return "densityPlot"; // Better than histogram for showing distribution
+        }
+    }
+    
+    // Standard visualization selection based on question type
     switch (type) {
         case "multiple_choice":
             // For multiple choice with few options, use pie chart or bar chart
@@ -652,6 +849,12 @@ const createWordCloud = (question) => {
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("style", "max-width: 100%; height: auto;");
 
+    // Add background for better visibility
+    svg.append("rect")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("fill", "#f8f9fa");
+
     // Add title
     svg.append("text")
         .attr("x", width / 2)
@@ -661,43 +864,62 @@ const createWordCloud = (question) => {
         .style("font-weight", "bold")
         .text(shortenText(question.text, 60));
 
-    // Get frequencies (limit to top 25)
-    const data = question.summary.frequencies.slice(0, 25).map((d) => ({
+    // Get frequencies (limit to top 20 for better readability)
+    const data = question.summary.frequencies.slice(0, 20).map((d) => ({
         text: d.value,
-        size: Math.sqrt(d.count) * 10 + 10, // Scale font size based on count
+        size: Math.log(d.count + 1) * 8 + 10, // Better size scaling using logarithm
         count: d.count,
     }));
 
-    // Basic positioning (random placement)
-    // In a real app, use a proper word cloud layout algorithm to avoid overlaps
-    const positions = [];
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    // Create a color scale
+    // Create a color scale with softer colors
     const color = d3.scaleOrdinal(d3.schemeCategory10);
+    
+    // Create layout grid for more organized placement
+    const gridSize = Math.ceil(Math.sqrt(data.length)); // Square grid
+    const cellWidth = width / (gridSize + 1);
+    const cellHeight = (height - 60) / (gridSize + 1);
+    
+    // Center coordinates
+    const startX = cellWidth / 2;
+    const startY = 60 + cellHeight / 2;
 
-    // Add the words
-    const wordGroup = svg
-        .append("g")
-        .attr("transform", `translate(${centerX}, ${centerY})`);
-
-    data.forEach((d, i) => {
-        // Simple spiral layout (not collision-free)
-        const angle = (i / data.length) * 2 * Math.PI;
-        const radius = 100 * (1 - Math.pow(0.9, i)); // Spiral radius
-        const x = radius * Math.cos(angle);
-        const y = radius * Math.sin(angle);
-
-        wordGroup
-            .append("text")
-            .attr("x", x)
-            .attr("y", y)
+    // Sort data by size (largest first) to place the most important words first
+    const sortedData = [...data].sort((a, b) => b.size - a.size);
+    
+    // Create positions grid
+    const positions = [];
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            positions.push({
+                x: startX + j * cellWidth,
+                y: startY + i * cellHeight,
+            });
+        }
+    }
+    
+    // Shuffle positions for more natural, less grid-like appearance
+    // but maintain some structure to avoid overlaps
+    const shuffledPositions = shuffleArray([...positions]);
+    
+    // Add the words with proper spacing
+    sortedData.forEach((d, i) => {
+        if (i >= shuffledPositions.length) return; // Skip if no more positions
+        
+        const position = shuffledPositions[i];
+        
+        // Add small jitter for more natural appearance
+        const jitterX = (Math.random() - 0.5) * (cellWidth * 0.3);
+        const jitterY = (Math.random() - 0.5) * (cellHeight * 0.3);
+        
+        svg.append("text")
+            .attr("x", position.x + jitterX)
+            .attr("y", position.y + jitterY)
             .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "middle")
             .style("font-size", `${d.size}px`)
             .style("font-family", "Arial")
-            .style("font-weight", "bold")
-            .style("fill", color(i))
+            .style("font-weight", i < 5 ? "bold" : "normal") // Bold only top words
+            .style("fill", color(i % 10))
             .text(shortenText(d.text, 15));
     });
 
@@ -711,6 +933,19 @@ const createWordCloud = (question) => {
         .text("단어 크기는 빈도를 나타냅니다");
 
     return svg.node().outerHTML;
+};
+
+/**
+ * Fisher-Yates shuffle algorithm for arrays
+ * @param {Array} array - The array to shuffle
+ * @returns {Array} - Shuffled array
+ */
+const shuffleArray = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
 };
 
 /**
@@ -764,9 +999,10 @@ const createErrorSvg = () => {
  * Generate visualizations showing relationships between questions
  * @param {Array} questions - Array of question objects
  * @param {Array} rawData - The raw survey data
+ * @param {Object} dataContext - Data context for content-aware visualization
  * @returns {Promise<Array>} - Array of relationship visualization objects
  */
-const generateRelationshipVisualizations = async (questions, rawData) => {
+const generateRelationshipVisualizations = async (questions, rawData, dataContext = {}) => {
     const visualizations = [];
 
     // Filter questions that are suitable for correlation analysis
@@ -1679,6 +1915,254 @@ const shortenText = (text, maxLength) => {
     text = String(text);
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + "...";
+};
+
+/**
+ * Generate thematic visualizations based on content patterns
+ * @param {Object} processedData - The processed survey data
+ * @param {Object} dataContext - Data context information
+ * @returns {Promise<Array>} - Array of thematic visualizations
+ */
+const generateThematicVisualizations = async (processedData, dataContext) => {
+    try {
+        const thematicVisualizations = [];
+        
+        // Create group-based visualizations based on related questions
+        if (dataContext.questionGroups && dataContext.questionGroups.length > 0) {
+            for (const group of dataContext.questionGroups) {
+                if (group.relatedQuestions.length >= 2) {
+                    // Find the questions in the processedData
+                    const baseQuestion = processedData.questions.find(q => q.id === group.baseQuestion.id);
+                    
+                    if (baseQuestion) {
+                        // Create a composite visualization that shows related questions together
+                        const thematicViz = {
+                            id: `viz_thematic_${baseQuestion.id}`,
+                            title: `"${shortenText(baseQuestion.text, 30)}" 관련 통합 분석`,
+                            description: `이 시각화는 "${baseQuestion.text}"와 관련된 ${group.relatedQuestions.length}개 질문의 응답 패턴을 통합하여 보여줍니다.`,
+                            questionText: baseQuestion.text,
+                            chartType: "주제별 통합 차트",
+                            responseCount: baseQuestion.responseCount,
+                            // For now, we'll use a placeholder SVG until we implement the actual thematic visualization
+                            svgContent: createThematicPlaceholderSvg(baseQuestion, group),
+                            dataSummary: [`${group.relatedQuestions.length}개의 관련 질문이 통합되었습니다.`]
+                        };
+                        
+                        thematicVisualizations.push(thematicViz);
+                    }
+                }
+            }
+        }
+        
+        // Add visualizations for repeated terms across multiple questions
+        if (dataContext.repeatedTerms && Object.keys(dataContext.repeatedTerms).length > 0) {
+            // Get the top repeated terms (max 3)
+            const topTerms = Object.entries(dataContext.repeatedTerms)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3);
+                
+            if (topTerms.length > 0) {
+                // Create a term-based visualization
+                const termViz = {
+                    id: "viz_thematic_terms",
+                    title: "주요 주제 통합 분석",
+                    description: "이 시각화는 여러 질문에서 공통적으로 등장하는 주요 주제어를 중심으로 응답 패턴을 분석합니다.",
+                    questionText: "여러 질문 통합",
+                    chartType: "주제어 중심 분석",
+                    responseCount: processedData.totalRows,
+                    // Placeholder SVG until the actual implementation
+                    svgContent: createTermBasedPlaceholderSvg(topTerms),
+                    dataSummary: [`상위 ${topTerms.length}개 주제어가 분석되었습니다.`]
+                };
+                
+                thematicVisualizations.push(termViz);
+            }
+        }
+        
+        return thematicVisualizations;
+    } catch (error) {
+        console.error("주제별 시각화 생성 중 오류:", error);
+        return [];
+    }
+};
+
+/**
+ * Create a placeholder SVG for thematic visualization
+ * @param {Object} baseQuestion - The base question
+ * @param {Object} group - Group of related questions
+ * @returns {string} - SVG content
+ */
+const createThematicPlaceholderSvg = (baseQuestion, group) => {
+    const width = 500;
+    const height = 400;
+    
+    // Create SVG
+    const svg = d3
+        .create("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("style", "max-width: 100%; height: auto;");
+    
+    // Add background for better visibility
+    svg.append("rect")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("fill", "#f5f7fa");
+    
+    // Add title
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 30)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text(`${shortenText(baseQuestion.text, 40)} - 관련 질문 통합 분석`);
+    
+    // Add description
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 60)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .text(`${group.relatedQuestions.length}개의 관련 질문이 함께 분석되었습니다.`);
+    
+    // List related questions
+    const startY = 100;
+    const lineHeight = 25;
+    
+    svg.append("text")
+        .attr("x", 50)
+        .attr("y", startY - lineHeight)
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .text("관련 질문 목록:");
+    
+    group.relatedQuestions.forEach((relQ, index) => {
+        svg.append("text")
+            .attr("x", 50)
+            .attr("y", startY + index * lineHeight)
+            .style("font-size", "12px")
+            .text(`${index + 1}. ${shortenText(relQ.text || "관련 질문", 50)}`);
+    });
+    
+    // Add note
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 30)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("font-style", "italic")
+        .text("질문의 의미적 관계를 기반으로 한 통합 분석입니다.");
+    
+    return svg.node().outerHTML;
+};
+
+/**
+ * Create a placeholder SVG for term-based visualization
+ * @param {Array} topTerms - Array of top repeated terms
+ * @returns {string} - SVG content
+ */
+const createTermBasedPlaceholderSvg = (topTerms) => {
+    const width = 500;
+    const height = 400;
+    
+    // Create SVG
+    const svg = d3
+        .create("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("style", "max-width: 100%; height: auto;");
+    
+    // Add background for better visibility
+    svg.append("rect")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("fill", "#f0f5ff");
+    
+    // Add title
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 30)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text("주요 주제어 중심 통합 분석");
+    
+    // Add description
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 60)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .text(`${topTerms.length}개의 주요 주제어를 중심으로 응답을 분석합니다.`);
+    
+    // Create circles for each term
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = 100;
+    
+    topTerms.forEach((term, i) => {
+        const angle = (i / topTerms.length) * 2 * Math.PI;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        // Draw circle
+        svg.append("circle")
+            .attr("cx", x)
+            .attr("cy", y)
+            .attr("r", 30 + term[1] * 5) // Size based on frequency
+            .attr("fill", d3.schemeCategory10[i % 10])
+            .attr("opacity", 0.7);
+        
+        // Add term text
+        svg.append("text")
+            .attr("x", x)
+            .attr("y", y)
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "middle")
+            .style("font-size", "12px")
+            .style("font-weight", "bold")
+            .style("fill", "white")
+            .text(term[0]);
+    });
+    
+    // Add connecting lines
+    topTerms.forEach((term1, i) => {
+        const angle1 = (i / topTerms.length) * 2 * Math.PI;
+        const x1 = centerX + radius * Math.cos(angle1);
+        const y1 = centerY + radius * Math.sin(angle1);
+        
+        topTerms.forEach((term2, j) => {
+            if (i < j) {
+                const angle2 = (j / topTerms.length) * 2 * Math.PI;
+                const x2 = centerX + radius * Math.cos(angle2);
+                const y2 = centerY + radius * Math.sin(angle2);
+                
+                svg.append("line")
+                    .attr("x1", x1)
+                    .attr("y1", y1)
+                    .attr("x2", x2)
+                    .attr("y2", y2)
+                    .attr("stroke", "#999")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "3,3")
+                    .attr("opacity", 0.5);
+            }
+        });
+    });
+    
+    // Add note
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 30)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("font-style", "italic")
+        .text("여러 질문에서 반복되는 주제어를 기반으로 한 통합 분석입니다.");
+    
+    return svg.node().outerHTML;
 };
 
 export default {

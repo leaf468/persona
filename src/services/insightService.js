@@ -69,6 +69,7 @@ const prepareDataForAIAnalysis = (processedData) => {
             text: question.text,
             type: question.type,
             responseCount: question.responseCount,
+            field: question.field, // Add original field name for better context
         };
 
         // Add type-specific summary
@@ -76,9 +77,8 @@ const prepareDataForAIAnalysis = (processedData) => {
             question.type === "multiple_choice" ||
             question.type === "categorical"
         ) {
-            // Get top 5 responses for categorical questions
+            // Include all responses for better context analysis, not just top 5
             summary.topResponses = question.summary.frequencies
-                .slice(0, 5)
                 .map((freq) => ({
                     value: freq.value,
                     count: freq.count,
@@ -95,41 +95,149 @@ const prepareDataForAIAnalysis = (processedData) => {
                 median: question.summary.median,
                 standardDeviation: question.summary.standardDeviation,
             };
+            
+            // Add frequency distribution for better pattern analysis
+            summary.distribution = question.summary.frequencies;
         }
 
         return summary;
     });
 
+    // Include the complete raw data for context analysis
+    const fullData = processedData.rawData;
+    
     // Find potential correlations
     const correlations = findPotentialCorrelations(processedData);
     
-    // Get raw text samples for text questions
+    // Get comprehensive text samples for text questions
     const rawSamples = {};
     if (processedData.rawData) {
         // Find text-type questions
         const textQuestions = processedData.questions.filter(q => q.type === "text");
         
-        // For each text question, get up to 5 sample responses
+        // For each text question, get up to 10 sample responses for better context
         textQuestions.forEach(question => {
             const field = question.field;
             const samples = processedData.rawData
                 .map(row => row[field])
                 .filter(text => text && text.trim().length > 0)
-                .slice(0, 5);  // Take just 5 samples
+                .slice(0, 10);  // Take more samples for better context
                 
             if (samples.length > 0) {
                 rawSamples[question.id] = samples;
             }
         });
     }
+    
+    // Analyze patterns across questions
+    const patterns = analyzeQuestionPatterns(processedData);
 
     return {
         totalResponses: processedData.totalRows,
         questionCount: processedData.questions.length,
         questions: questionSummaries,
         correlations: correlations,
-        rawSamples: rawSamples
+        rawSamples: rawSamples,
+        patterns: patterns,
+        // Include sample rows for better context understanding
+        sampleRows: processedData.rawData.slice(0, Math.min(10, processedData.rawData.length))
     };
+};
+
+/**
+ * Analyze patterns across questions to identify relationships
+ * @param {Object} processedData - The processed survey data
+ * @returns {Object} - Patterns identified across questions
+ */
+const analyzeQuestionPatterns = (processedData) => {
+    const patterns = {
+        questionGroups: [],
+        repeatedTerms: {},
+        potentialVisualizations: []
+    };
+    
+    // Group questions by potential themes/topics based on text similarity
+    const questions = processedData.questions;
+    const questionTexts = questions.map(q => q.text.toLowerCase());
+    
+    // Extract common terms across questions
+    const commonTerms = new Map();
+    questionTexts.forEach(text => {
+        // Split into words, remove common words
+        const words = text.split(/\s+/).filter(word => 
+            word.length > 3 && 
+            !["what", "when", "where", "which", "this", "that", "these", "those", "with", "your"].includes(word)
+        );
+        
+        words.forEach(word => {
+            commonTerms.set(word, (commonTerms.get(word) || 0) + 1);
+        });
+    });
+    
+    // Find terms that appear in multiple questions
+    for (const [term, count] of commonTerms.entries()) {
+        if (count >= 2) {
+            patterns.repeatedTerms[term] = count;
+        }
+    }
+    
+    // Identify groups of related questions
+    for (let i = 0; i < questions.length; i++) {
+        const relatedQuestions = [];
+        const q1 = questions[i];
+        
+        for (let j = i + 1; j < questions.length; j++) {
+            const q2 = questions[j];
+            
+            // Check for text similarity based on common words
+            const q1Words = new Set(q1.text.toLowerCase().split(/\s+/));
+            const q2Words = new Set(q2.text.toLowerCase().split(/\s+/));
+            
+            // Find intersection
+            const commonWords = [...q1Words].filter(word => q2Words.has(word) && word.length > 3);
+            
+            if (commonWords.length >= 2) {
+                relatedQuestions.push({
+                    questionId: q2.id,
+                    commonTerms: commonWords
+                });
+            }
+        }
+        
+        if (relatedQuestions.length > 0) {
+            patterns.questionGroups.push({
+                baseQuestion: q1.id,
+                baseQuestionText: q1.text,
+                relatedQuestions: relatedQuestions
+            });
+        }
+    }
+    
+    // Suggest visualization types based on question combinations
+    processedData.questions.forEach(question => {
+        // For text questions with many unique responses, suggest keyword map or word cloud
+        if (question.type === "text" || 
+            (question.type === "categorical" && question.uniqueValues.length > 15)) {
+            patterns.potentialVisualizations.push({
+                questionId: question.id,
+                questionText: question.text,
+                suggestedViz: ["wordcloud", "keywordMap"],
+                rationale: "Text responses or many categorical values can be visualized as word clouds or keyword maps to show frequency patterns"
+            });
+        }
+        
+        // For multiple choice with many options, suggest treemap instead of pie/bar
+        if (question.type === "multiple_choice" && question.uniqueValues.length > 10) {
+            patterns.potentialVisualizations.push({
+                questionId: question.id,
+                questionText: question.text,
+                suggestedViz: ["treemap"],
+                rationale: "Multiple choice with many options is better visualized as a treemap for clarity"
+            });
+        }
+    });
+    
+    return patterns;
 };
 
 /**
@@ -229,20 +337,20 @@ const generateAIInsights = async (data) => {
                     }`,
                 },
                 body: JSON.stringify({
-                    model: "gpt-4", // Using GPT-4 for better context understanding
+                    model: "gpt-4o", // Using GPT-4o for improved context understanding and multimodal capabilities
                     messages: [
                         {
                             role: "system",
                             content:
-                                "You are an expert market researcher and data scientist who specializes in extracting meaningful insights from survey data. Your analysis goes beyond simple statistics to understand the deeper context, purpose, and implications of survey questions and responses. You excel at identifying patterns in natural language and connecting quantitative data with qualitative meaning. Respond only in the JSON format specified in the prompt.",
+                                "You are an expert market researcher and data scientist who specializes in extracting meaningful insights from survey data. Your analysis goes beyond simple statistics to understand the deeper context, purpose, and implications of survey questions and responses. You excel at identifying patterns in natural language and connecting quantitative data with qualitative meaning. You can also suggest the most appropriate visualization types based on content patterns rather than simple structural rules. Respond only in the JSON format specified in the prompt.",
                         },
                         {
                             role: "user",
                             content: prompt,
                         },
                     ],
-                    temperature: 0.4, // Slightly lower temperature for more focused responses
-                    max_tokens: 3000, // Increased token limit for more detailed analysis
+                    temperature: 0.3, // Lower temperature for more focused responses
+                    max_tokens: 4000, // Increased token limit for more comprehensive analysis
                 }),
             }
         );
@@ -326,10 +434,11 @@ const createInsightPrompt = (data) => {
 
 # 설문조사 맥락 확인
 이 설문 데이터를 분석할 때는 다음 사항을 중요하게 고려하세요:
-1. 설문의 목적: 질문 내용을 분석하여 이 설문의 주요 목적과 대상 고객층을 파악하세요.
-2. 질문 간 관계: 개별 질문만 보지 말고, 질문들 간의 관계와 전체 설문의 흐름을 고려하세요.
+1. 설문의 전체적 맥락: 전체 데이터를 종합적으로 분석해 설문의 큰 그림과 맥락을 파악하세요. 단일 질문이 아닌 전체 설문의 흐름을 고려하세요.
+2. 질문 간 관계: 개별 질문만 보지 말고, 질문들 간의 관계와 유기적 연결성을 이해하세요.
 3. 응답자 세그멘테이션: 응답 패턴에 따라 응답자 그룹을 나누고, 각 그룹의 특성을 파악하세요.
 4. 질문 내용 분석: 질문의 표현, 형식, 어조 등을 분석하여 설문의 맥락과 의도를 이해하세요.
+5. 시각화 추천: 데이터 패턴을 가장 잘 보여줄 수 있는 시각화 유형을 제안하세요. 단순한 구조적 규칙이 아닌 콘텐츠 패턴에 기반한 시각화 방법을 추천하세요.
 
 # 데이터 요약
 총 응답자 수: ${data.totalResponses}명
@@ -341,6 +450,9 @@ ${questionsText}
 # 잠재적 상관관계 분석 대상
 ${correlationsText}
 
+# 패턴 정보
+${data.patterns ? JSON.stringify(data.patterns, null, 2) : "패턴 정보가 없습니다."}
+
 다음 JSON 형식으로 응답해 주세요:
 \`\`\`json
 {
@@ -350,6 +462,22 @@ ${correlationsText}
         "keyConcerns": ["설문에서 다루는 주요 관심사/주제 1", "주요 관심사/주제 2", "..."]
     },
     "executiveSummary": "설문 전체에 대한 맥락을 포함한 요약 (3-4문장)",
+    "overallContext": "설문의 전체 맥락과 응답의 의미에 대한 종합적 이해 (3-5문장)",
+    "visualizationSuggestions": [
+        {
+            "questionId": "question_id",
+            "questionText": "질문 내용",
+            "suggestedVizType": "wordcloud|graph|correlation|comparative|etc",
+            "rationale": "이 시각화 유형이 적합한 이유 (2-3문장)"
+        }
+    ],
+    "thematicGroups": [
+        {
+            "theme": "주제 그룹명",
+            "relatedQuestions": ["관련 질문1", "관련 질문2"],
+            "description": "이 질문 그룹이 연관된 이유와 함께 보았을 때의 의미 (2-3문장)"
+        }
+    ],
     "insights": [
         {
             "id": "insight1",
@@ -359,9 +487,9 @@ ${correlationsText}
             "relatedQuestions": ["관련된 질문 내용1", "관련된 질문 내용2"],
             "confidenceLevel": 70,
             "actionableInsight": "이 인사이트를 바탕으로 취할 수 있는 구체적인 행동",
-            "recommendations": ["제안사항1", "제안사항2"]
-        },
-        {...}
+            "recommendations": ["제안사항1", "제안사항2"],
+            "suggestedVisualization": "이 인사이트를 가장 잘 표현할 수 있는 시각화 유형"
+        }
     ]
 }
 \`\`\`
@@ -369,10 +497,12 @@ ${correlationsText}
 설문 데이터에 기반하여 최소 5개에서 최대 10개의 의미 있는 인사이트를 생성해 주세요. 
 각 인사이트는 다음 조건을 만족해야 합니다:
 
-1. 단순히 '높은 점수' 또는 '낮은 점수'만 기반으로 하지 않고, 질문의 자연어 내용과 응답 패턴을 깊이 분석하여 도출할 것
-2. 설문의 맥락과 목적에 맞는 실용적인 인사이트를 제공할 것
-3. 데이터에서 관찰된 패턴, 트렌드, 상관관계를 구체적인 맥락과 함께 설명할 것
-4. 각 인사이트가 "그래서 어떻게 해야 하는가?"라는 질문에 대한 답을 제공할 것
+1. 개별 질문이 아닌 전체 설문 맥락을 이해하고 질문 간의 관계를 고려한 심층적 분석을 제공할 것
+2. 질문의 자연어 내용과 전체 응답 패턴을 깊이 분석하여 맥락적인 인사이트를 도출할 것
+3. 텍스트 응답의 경우 단순 키워드가 아닌 내용의 의미적 패턴을 파악하고 적절한 시각화 방법을 제안할 것
+4. 유사한 내용의 질문들을 그룹화하여 주제별 통합 분석을 제공할 것
+5. 데이터에서 관찰된 패턴, 트렌드, 상관관계를 구체적인 맥락과 함께 설명할 것
+6. 각 인사이트에 대해 가장 효과적인 시각화 방법을 추천할 것 (표준 차트 유형이 아닌 데이터 내용에 기반한 시각화)
 
 카테고리는 다음과 같습니다:
 - general: 전반적인 응답 패턴에 관한 일반적인 인사이트
@@ -381,7 +511,12 @@ ${correlationsText}
 - correlations: 질문들 간의 관계나 상관관계
 - recommendations: 데이터 기반 제안사항
 
-인사이트를 작성할 때 설문의 본질적인 목적과 맥락을 항상 고려하세요. 구체적이고, 실행 가능하며, 설문의 목적에 부합하는 인사이트를 제공해 주세요.
+또한 시각화 추천에 있어서 다음 사항을 고려하세요:
+1. 모든 텍스트 데이터에 워드 클라우드를 추천하지 말고, 내용에 따라 다양한 시각화(주제 네트워크, 클러스터링 차트, 감성 분석 등)를 제안하세요.
+2. 숫자 데이터에 대해서도 단순히 막대 그래프가 아닌, 데이터의 특성과 맥락에 맞는 시각화를 제안하세요.
+3. 질문 간의 관계가 발견되면 통합적으로 볼 수 있는 시각화 방법을 제안하세요.
+
+인사이트를 작성할 때 설문의 본질적인 목적과 전체 맥락을 항상 고려하세요. 구체적이고, 실행 가능하며, 설문의 목적에 부합하는 인사이트를 제공해 주세요.
 `;
 };
 
