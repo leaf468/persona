@@ -1,0 +1,81 @@
+# Innovation Frameworks and Methodologies
+
+## Design Thinking
+- Empathize: Understand user needs through observation and engagement
+- Define: Clearly articulate the problem and user needs
+- Ideate: Generate a wide range of creative solutions
+- Prototype: Build representations of potential solutions
+- Test: Evaluate prototypes with users and refine solutions
+- Implementation: Transform the validated solution into reality
+
+## Lean Startup Methodology
+- Build: Create a minimum viable product (MVP)
+- Measure: Collect data on user interactions
+- Learn: Draw insights from data to improve the product
+- Validated Learning: Test key business hypotheses with MVPs
+- Innovation Accounting: Establish metrics to measure progress
+- Pivot or Persevere: Make strategic decisions based on insights
+
+## Agile Innovation
+- Iterative Development: Work in short cycles to deliver incremental value
+- Cross-Functional Teams: Bring together diverse expertise
+- Customer Collaboration: Involve users throughout the process
+- Responsive to Change: Adapt based on feedback and new information
+- Continuous Improvement: Regularly reflect and optimize processes
+- Value Delivery: Focus on outcomes over outputs
+
+## Open Innovation
+- External Knowledge Integration: Tap into ideas from outside the organization
+- Collaborative Networks: Form partnerships with diverse stakeholders
+- Innovation Contests: Challenge external parties to solve specific problems
+- Innovation Ecosystems: Create environments that foster cross-pollination
+- IP Management: Balance protection and sharing of intellectual property
+- Platform Innovation: Create foundations that others can build upon
+
+## The Three Horizons Model
+- Horizon 1: Extend and defend core business
+- Horizon 2: Build emerging opportunities
+- Horizon 3: Create viable options for future business
+- Resource Allocation: Balance investment across the three horizons
+- Portfolio Management: Maintain projects at different development stages
+- Parallel Development: Work simultaneously across horizons
+
+## Jobs-to-be-Done Framework
+- Focus on Customer Jobs: Understand what customers are trying to accomplish
+- Identify Functional, Social, and Emotional Jobs
+- Uncover Pain Points: Find struggles in current solutions
+- Discover Gain Opportunities: Identify potential benefits
+- Outcome-Driven Innovation: Develop solutions based on job outcomes
+- Progress-Making Forces: Understand what drives and hinders adoption
+
+## Blue Ocean Strategy
+- Value Innovation: Create uncontested market space
+- Four Actions Framework (Eliminate-Reduce-Raise-Create)
+- Strategy Canvas: Visualize competitive factors
+- Non-Customer Analysis: Look beyond existing customers
+- Sequence Strategic Moves: Ensure utility, price, cost, and adoption
+- Overcome Organizational Hurdles: Address cognitive, resource, motivational, and political barriers
+
+## TRIZ (Theory of Inventive Problem Solving)
+- Contradiction Analysis: Identify and resolve technical conflicts
+- 40 Inventive Principles: Apply established solution patterns
+- Ideality: Strive for maximum benefits with minimum resources
+- Functional Analysis: Map how system components interact
+- Resources: Leverage available but underutilized resources
+- Trends of Technical Evolution: Understand how systems naturally evolve
+
+## Disruptive Innovation Theory
+- Low-End Disruption: Target over-served customers with simpler solutions
+- New-Market Disruption: Serve non-consumers with accessible offerings
+- Business Model Innovation: Rethink value proposition and delivery
+- Value Network: Consider the ecosystem impact of innovations
+- Sustaining vs. Disruptive Paths: Recognize different innovation trajectories
+- The Innovator's Dilemma: Balance current success with future disruption
+
+## Corporate Entrepreneurship
+- Intrapreneurship: Foster entrepreneurial mindset within the organization
+- Skunkworks: Create autonomous teams for radical innovation
+- Venture Building: Establish internal startups
+- Corporate Venture Capital: Invest in external startups
+- Innovation Labs: Dedicated spaces for experimentation
+- Ambidextrous Organizations: Balance exploitation and exploration

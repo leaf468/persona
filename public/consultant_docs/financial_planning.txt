@@ -1,0 +1,81 @@
+# Financial Planning and Analysis Fundamentals
+
+## Budgeting Processes
+- Zero-based budgeting: Build budget from scratch each period
+- Incremental budgeting: Adjust prior period budgets incrementally
+- Activity-based budgeting: Link costs to activities and outputs
+- Rolling forecasts: Update budgets on a continuous basis
+- Scenario-based budgeting: Prepare for multiple potential outcomes
+- Top-down vs. bottom-up approaches: Balance strategic direction with operational input
+
+## Financial Forecasting
+- Revenue forecasting methods: Historical trends, market analysis, sales pipeline
+- Cost projections: Fixed vs. variable cost analysis
+- Cash flow forecasting: Timing of receipts and disbursements
+- Sensitivity analysis: Impact of changing key variables
+- Statistical forecasting: Regression analysis, moving averages, exponential smoothing
+- Driver-based forecasting: Link financial projections to operational metrics
+
+## Financial Modeling
+- Three-statement models: Integrated income statement, balance sheet, and cash flow
+- Discounted cash flow (DCF) models: Present value of future cash flows
+- Scenario and sensitivity analysis: Test different assumptions
+- Monte Carlo simulation: Probabilistic outcomes based on variable inputs
+- Working capital models: Optimize inventory, receivables, and payables
+- Capital structure optimization: Determine ideal debt-to-equity ratios
+
+## Management Reporting
+- Dashboards and KPIs: Visual representation of key metrics
+- Variance analysis: Comparing actual results to budget or forecast
+- Contribution margin reporting: Profitability by product, customer, or segment
+- Balanced scorecard approach: Financial and non-financial measures
+- Executive summaries: Concise overview of financial performance
+- Data visualization best practices: Effective communication of financial data
+
+## Cost Management
+- Cost classification: Fixed, variable, semi-variable, direct, indirect
+- Activity-based costing: Allocate overhead based on activities
+- Target costing: Design to cost based on market requirements
+- Life-cycle costing: Consider all costs over product/service lifetime
+- Value chain analysis: Identify opportunities for cost advantage
+- Cost-volume-profit analysis: Break-even points and contribution margins
+
+## Capital Investment Analysis
+- Net present value (NPV): Discounted cash flow evaluation
+- Internal rate of return (IRR): Return percentage of an investment
+- Payback period: Time required to recover initial investment
+- Return on invested capital (ROIC): Measure of investment efficiency
+- Hurdle rate determination: Required return for investment approval
+- Post-implementation reviews: Evaluate actual vs. projected returns
+
+## Working Capital Management
+- Cash conversion cycle optimization: Reduce time cash is tied up
+- Inventory management: Economic order quantity, just-in-time approaches
+- Accounts receivable management: Credit terms, collection policies
+- Accounts payable optimization: Supplier terms, payment timing
+- Short-term cash management: Investing excess cash, managing shortfalls
+- Working capital metrics: Current ratio, quick ratio, working capital turnover
+
+## Risk Management
+- Sensitivity analysis: Impact of changing key variables
+- Scenario planning: Prepare for different economic environments
+- Hedging strategies: Mitigate foreign exchange, interest rate, commodity risks
+- Insurance and risk transfer: Protect against insurable risks
+- Contingency planning: Prepare for unexpected events
+- Enterprise risk management: Holistic approach to managing various risks
+
+## Performance Measurement
+- Key performance indicators (KPIs): Financial and operational metrics
+- Economic value added (EVA): Economic profit after cost of capital
+- Balanced scorecard: Financial, customer, internal process, learning measures
+- Return on investment (ROI) analysis: Measuring return on various investments
+- Benchmarking: Comparing performance to industry standards
+- Incentive compensation alignment: Link rewards to performance metrics
+
+## Strategic Financial Analysis
+- SWOT analysis with financial implications
+- Competitive financial analysis: Benchmarking against peers
+- Merger and acquisition evaluation: Synergy potential, integration costs
+- Business unit portfolio analysis: Allocate resources to maximize returns
+- Pricing strategy analysis: Impact on margins and market position
+- Long-term capital structure planning: Optimize cost of capital
