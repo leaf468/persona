@@ -1,4 +1,5 @@
 // src/services/insightService.js
+import { TextAnalyzer } from './textVisualizationService';
 
 /**
  * Generate insights from the processed survey data using AI
@@ -30,6 +31,27 @@ export const generateInsights = async (processedData) => {
             targetAudience: "대상 고객층을 확인할 수 없습니다.",
             keyConcerns: ["파악된 주요 관심사가 없습니다."]
         };
+        
+        // Add visualization suggestions from AI
+        const visualizationSuggestions = insights.visualizationSuggestions || [];
+        
+        // Add thematic groups
+        const thematicGroups = insights.thematicGroups || [];
+        
+        // Process insights to add visualization suggestions based on text analysis
+        const processedInsights = organizedInsights.map(insight => {
+            // Analyze the insight description for potential visualization
+            if (insight.description) {
+                const textAnalysis = TextAnalyzer.analyzeText(insight.description);
+                
+                // Only recommend a visualization if AI didn't already suggest one
+                if (!insight.suggestedVisualization && textAnalysis.type !== "wordcloud") {
+                    insight.suggestedVisualization = textAnalysis.type;
+                    insight.visualizationData = textAnalysis.data;
+                }
+            }
+            return insight;
+        });
 
         // Add metadata
         return {
@@ -38,7 +60,10 @@ export const generateInsights = async (processedData) => {
             executiveSummary:
                 insights.executiveSummary ||
                 "데이터에서 주요 인사이트를 추출하는 중입니다.",
+            overallContext: insights.overallContext || "",
             surveyContext: surveyContext,
+            visualizationSuggestions: visualizationSuggestions,
+            thematicGroups: thematicGroups,
             categories: [
                 { id: "general", name: "일반 인사이트" },
                 { id: "trends", name: "트렌드 분석" },
@@ -46,7 +71,7 @@ export const generateInsights = async (processedData) => {
                 { id: "correlations", name: "상관관계" },
                 { id: "recommendations", name: "제안사항" },
             ],
-            items: organizedInsights,
+            items: processedInsights,
         };
     } catch (error) {
         console.error("인사이트 생성 중 오류:", error);
@@ -858,6 +883,8 @@ const organizeInsights = (rawInsights) => {
             recommendations: Array.isArray(insight.recommendations)
                 ? insight.recommendations
                 : [],
+            // Include suggested visualization if available
+            suggestedVisualization: insight.suggestedVisualization || null,
             // Add context information to each insight if available
             context: rawInsights.surveyContext || null
         };

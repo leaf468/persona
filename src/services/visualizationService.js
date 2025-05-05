@@ -1,5 +1,6 @@
 // src/services/visualizationService.js
 import * as d3 from "d3";
+import { generateVisualizationFromText } from './textVisualizationService';
 
 /**
  * Generate visualizations based on the processed data
@@ -302,6 +303,51 @@ const createVisualization = async (question, rawData, vizType) => {
         let chartType = "";
         let dataSummary = [];
 
+        // Check if this is text data and should use text visualization analysis
+        if (question.type === "text" && 
+            (vizType === "wordcloud" || 
+             vizType === "keywordMetrics" || 
+             vizType === "structuredList" || 
+             vizType === "categorizedResponses")) {
+            
+            // Extract all text responses for this question
+            const textResponses = [];
+            const field = question.field;
+            
+            rawData.forEach(row => {
+                if (row[field] && typeof row[field] === 'string' && row[field].trim()) {
+                    textResponses.push(row[field]);
+                }
+            });
+            
+            // Combine into a single text for analysis
+            const combinedText = textResponses.join("\n\n");
+            
+            // Use text visualization analysis to generate the appropriate chart
+            if (combinedText.length > 0) {
+                const textVizResult = generateVisualizationFromText(combinedText);
+                
+                if (textVizResult.success) {
+                    svgContent = textVizResult.svgContent;
+                    chartType = getKoreanChartTypeName(textVizResult.type);
+                    dataSummary = [`텍스트 응답 ${textResponses.length}개가 분석되었습니다.`];
+                    
+                    // Return visualization with detected type
+                    return {
+                        id: `viz_${question.id}`,
+                        title: `${question.text} 분석`,
+                        description: `이 시각화는 "${question.text}"에 대한 텍스트 응답을 분석하여 ${chartType}로 표현한 것입니다.`,
+                        questionText: question.text,
+                        chartType: chartType,
+                        responseCount: question.responseCount,
+                        svgContent: svgContent,
+                        dataSummary: dataSummary,
+                        textAnalysisType: textVizResult.type
+                    };
+                }
+            }
+        }
+
         // Generate the visualization based on the type
         switch (vizType) {
             case "pie":
@@ -332,6 +378,27 @@ const createVisualization = async (question, rawData, vizType) => {
                 svgContent = createWordCloud(question);
                 chartType = "워드 클라우드";
                 dataSummary = getWordCloudSummary(question);
+                break;
+                
+            case "horizontalBar":
+                // Fallback to standard bar chart until horizontal implementation is complete
+                svgContent = createBarChart(question);
+                chartType = "막대 차트";
+                dataSummary = getBarChartSummary(question);
+                break;
+                
+            case "groupedBar":
+                // Fallback to standard bar chart until grouped implementation is complete
+                svgContent = createBarChart(question);
+                chartType = "막대 차트";
+                dataSummary = getBarChartSummary(question);
+                break;
+                
+            case "densityPlot":
+                // Fallback to histogram until density plot implementation is complete
+                svgContent = createHistogram(question);
+                chartType = "히스토그램";
+                dataSummary = getHistogramSummary(question);
                 break;
 
             default:
@@ -365,6 +432,30 @@ const createVisualization = async (question, rawData, vizType) => {
             dataSummary: ["시각화를 생성할 수 없습니다."],
         };
     }
+};
+
+/**
+ * Get Korean name for chart type
+ * @param {string} chartType - English chart type
+ * @returns {string} - Korean chart type name
+ */
+const getKoreanChartTypeName = (chartType) => {
+    const chartTypeMap = {
+        'pieChart': '파이 차트',
+        'barChart': '막대 차트',
+        'horizontalBarChart': '가로 막대 차트',
+        'lineChart': '선 그래프',
+        'histogram': '히스토그램',
+        'treemap': '트리맵',
+        'wordcloud': '워드 클라우드',
+        'keywordMetrics': '키워드 지표 분석',
+        'structuredList': '구조화된 목록',
+        'categorizedResponses': '범주화된 응답',
+        'groupedBar': '그룹화된 막대 차트',
+        'densityPlot': '밀도 플롯'
+    };
+    
+    return chartTypeMap[chartType] || '차트';
 };
 
 /**
