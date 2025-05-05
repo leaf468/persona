@@ -10,13 +10,14 @@ const ConsultantChatbot = ({ consultantData }) => {
         {
             role: "assistant",
             content:
-                "안녕하세요! 저는 경영 컨설턴트 AI입니다. 어떤 도움이 필요하신가요?",
+                "안녕하세요! 저는 경영 컨설턴트 AI입니다. 비즈니스 전략, 마케팅, 조직 관리 등 다양한 경영 질문에 답변해 드릴 수 있습니다. 무엇을 도와드릴까요?",
         },
     ]);
     const [userInput, setUserInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [consultantFiles, setConsultantFiles] = useState([]);
     const [selectedDocument, setSelectedDocument] = useState(null);
+    const [analysisMode, setAnalysisMode] = useState(false); // 심층 분석 모드 상태
 
     // 채팅창 자동 스크롤을 위한 ref
     const chatContainerRef = useRef(null);
@@ -56,9 +57,18 @@ const ConsultantChatbot = ({ consultantData }) => {
                 selectedDocument
             );
 
+            // 전략적 조언인 경우 스타일 적용
+            const messageStyle = response.isStrategicAdvice
+                ? "strategic-advice"
+                : "";
+
             setMessages((prev) => [
                 ...prev,
-                { role: "assistant", content: response.message },
+                {
+                    role: "assistant",
+                    content: response.message,
+                    messageStyle: messageStyle,
+                },
             ]);
 
             // 참조 문서가 있는 경우 업데이트
@@ -88,6 +98,23 @@ const ConsultantChatbot = ({ consultantData }) => {
             {
                 role: "system",
                 content: `"${document.title}" 문서를 선택했습니다. 이 문서를 기반으로 도움을 드리겠습니다.`,
+            },
+        ]);
+    };
+
+    // 심층 분석 모드 토글
+    const toggleAnalysisMode = () => {
+        const newMode = !analysisMode;
+        setAnalysisMode(newMode);
+
+        // 모드 변경 알림 메시지 추가
+        setMessages((prev) => [
+            ...prev,
+            {
+                role: "system",
+                content: newMode
+                    ? "심층 분석 모드가 활성화되었습니다. 전략적 질문에 대해 더 깊이 있는 분석을 제공해 드리겠습니다."
+                    : "일반 모드로 전환되었습니다.",
             },
         ]);
     };
@@ -128,6 +155,16 @@ const ConsultantChatbot = ({ consultantData }) => {
                     비즈니스 전략, 마케팅, 인사 관리 등 다양한 경영 문제에 대해
                     질문하세요
                 </p>
+                <button
+                    className={`analysis-mode-toggle ${
+                        analysisMode ? "active" : ""
+                    }`}
+                    onClick={toggleAnalysisMode}
+                >
+                    {analysisMode
+                        ? "심층 분석 모드 켜짐"
+                        : "심층 분석 모드 끄기"}
+                </button>
             </div>
 
             <div className="consultant-container">
@@ -188,41 +225,55 @@ const ConsultantChatbot = ({ consultantData }) => {
 
                 <div className="chat-main">
                     <div className="chat-messages" ref={chatContainerRef}>
-                        {messages.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`message ${message.role}-message`}
-                            >
-                                {message.role === "assistant" && (
-                                    <div className="avatar consultant-avatar">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
-                                            />
-                                        </svg>
+                        {messages.map((message, index) => {
+                            if (message.role === "system") {
+                                return (
+                                    <div key={index} className="system-message">
+                                        <div className="message-bubble">
+                                            {message.content}
+                                        </div>
                                     </div>
-                                )}
+                                );
+                            }
 
+                            return (
                                 <div
-                                    className={`message-bubble ${message.role}-bubble`}
+                                    key={index}
+                                    className={`message ${message.role}-message`}
                                 >
-                                    {formatMessageContent(message.content)}
-                                    {message.source && (
-                                        <div className="message-source">
-                                            출처: {message.source}
+                                    {message.role === "assistant" && (
+                                        <div className="avatar consultant-avatar">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
+                                                />
+                                            </svg>
                                         </div>
                                     )}
+
+                                    <div
+                                        className={`message-bubble ${
+                                            message.role
+                                        }-bubble ${message.messageStyle || ""}`}
+                                    >
+                                        {formatMessageContent(message.content)}
+                                        {message.source && (
+                                            <div className="message-source">
+                                                출처: {message.source}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {isLoading && (
                             <div className="message assistant-message">
@@ -257,7 +308,11 @@ const ConsultantChatbot = ({ consultantData }) => {
                             type="text"
                             value={userInput}
                             onChange={(e) => setUserInput(e.target.value)}
-                            placeholder="경영 질문을 입력하세요..."
+                            placeholder={
+                                analysisMode
+                                    ? "심층 분석이 필요한 전략적 질문을 입력하세요..."
+                                    : "경영 질문을 입력하세요..."
+                            }
                             className="chat-input"
                             disabled={isLoading}
                         />

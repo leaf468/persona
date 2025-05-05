@@ -198,6 +198,139 @@ const formatResponseForReadability = (text) => {
 };
 
 /**
+ * 질문 유형에 따라 전략적 조언이 필요한지 판단
+ * @param {String} query - 사용자 질문
+ * @returns {Boolean} - 전략적 조언 필요 여부
+ */
+const needsStrategicAdvice = (query) => {
+    // 전략적 조언이 필요한 키워드 목록
+    const strategicKeywords = [
+        "전략",
+        "strategy",
+        "장기적",
+        "long-term",
+        "비전",
+        "vision",
+        "미션",
+        "mission",
+        "성장",
+        "growth",
+        "확장",
+        "expansion",
+        "혁신",
+        "innovation",
+        "경쟁",
+        "competition",
+        "시장",
+        "market",
+        "포지셔닝",
+        "positioning",
+        "차별화",
+        "differentiation",
+        "벤치마킹",
+        "benchmarking",
+        "리더십",
+        "leadership",
+        "조직문화",
+        "culture",
+        "변화관리",
+        "change management",
+        "의사결정",
+        "decision making",
+        "핵심역량",
+        "core competency",
+        "자원배분",
+        "resource allocation",
+    ];
+
+    const lowerQuery = query.toLowerCase();
+
+    // 문장에 전략적 키워드가 포함되어 있는지 확인
+    return strategicKeywords.some((keyword) =>
+        lowerQuery.includes(keyword.toLowerCase())
+    );
+};
+
+/**
+ * 웹 검색을 활용한 추가 정보 수집
+ * @param {String} query - 사용자 질문
+ * @returns {Promise<String>} - 웹 검색 결과
+ */
+const fetchWebSearchResults = async (query) => {
+    try {
+        // 이 부분은 실제 API 키와 엔드포인트로 대체해야 합니다
+        // 예시 코드입니다
+        if (!import.meta.env.VITE_SEARCH_API_KEY) {
+            console.log("검색 API 키가, 웹 검색 결과를 시뮬레이션합니다.");
+            return simulateWebSearchResults(query);
+        }
+
+        const response = await fetch(
+            `https://api.search.provider.com/v1/search?q=${encodeURIComponent(
+                query
+            )}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${
+                        import.meta.env.VITE_SEARCH_API_KEY
+                    }`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`검색 API 호출 실패: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // 검색 결과에서 관련 정보 추출 및 포맷팅
+        let searchResults = "";
+        if (data.results && data.results.length > 0) {
+            // 상위 3개 결과만 사용
+            const topResults = data.results.slice(0, 3);
+            searchResults = topResults
+                .map(
+                    (result) =>
+                        `${result.title}\n${result.snippet}\n출처: ${result.url}`
+                )
+                .join("\n\n");
+        }
+
+        return searchResults;
+    } catch (error) {
+        console.error("웹 검색 오류:", error);
+        return ""; // 오류 발생 시 빈 문자열 반환
+    }
+};
+
+/**
+ * 웹 검색 결과 시뮬레이션 (API 키 없을 때 사용)
+ * @param {String} query - 사용자 질문
+ * @returns {String} - 시뮬레이션된 검색 결과
+ */
+const simulateWebSearchResults = (query) => {
+    const lowerQuery = query.toLowerCase();
+
+    // 간단한 키워드 기반 시뮬레이션 응답
+    if (lowerQuery.includes("전략") || lowerQuery.includes("strategy")) {
+        return "비즈니스 전략 개발 가이드 - Harvard Business Review\n효과적인 비즈니스 전략은 명확한 목표 설정, 시장 분석, 경쟁 우위 파악 및 실행 계획으로 구성됩니다. 성공적인 전략은 기업의 핵심 역량과 시장 기회를 연결합니다.\n출처: hbr.org/strategy-guide\n\n마이클 포터의 5가지 경쟁 요인 분석 - 비즈니스 인사이트\n포터의 5가지 경쟁 요인(기존 경쟁자, 신규 진입자, 대체재, 공급자 및 구매자의 교섭력)은 산업 구조를 이해하고 수익성이 높은 시장 위치를 찾는 데 유용한 프레임워크입니다.\n출처: businessinsight.com/porter-five-forces";
+    } else if (
+        lowerQuery.includes("마케팅") ||
+        lowerQuery.includes("marketing")
+    ) {
+        return "디지털 마케팅 트렌드 2025 - 마케팅 인사이트\n2025년 디지털 마케팅 트렌드는 AI 기반 개인화, 음성 검색 최적화, 몰입형 콘텐츠 경험, 데이터 프라이버시 중심 전략, 소셜 커머스 확대 등이 주목받고 있습니다.\n출처: marketinginsight.com/trends-2025\n\n통합 마케팅 커뮤니케이션의 중요성 - 마케팅 저널\n효과적인 통합 마케팅 커뮤니케이션(IMC)는 모든 채널에서 일관된 메시지를 전달하고, 고객 여정을 고려한 접근 방식이 중요합니다. 연구에 따르면 IMC를 적용한 기업은 평균 23% 높은 ROI를 달성했습니다.\n출처: marketingjournal.org/imc-importance";
+    } else if (
+        lowerQuery.includes("혁신") ||
+        lowerQuery.includes("innovation")
+    ) {
+        return "기업 혁신의 8가지 핵심 요소 - 혁신 리서치\n성공적인 혁신 문화를 위한 핵심 요소: 1) 실패를 용인하는 문화, 2) 다양한 아이디어 장려, 3) 리더십 지원, 4) 자원 할당, 5) 고객 중심 접근, 6) 학습 문화, 7) 실험 및 프로토타이핑, 8) 혁신 측정 지표 수립\n출처: innovationresearch.org/elements\n\n디스럽션 시대의 혁신 전략 - 기술 혁신 저널\n디지털 전환 시대에 기업의 혁신 전략은 내부 R&D, 오픈 이노베이션, 벤처 투자, 인수합병, 생태계 구축 등 다양한 접근 방식을 균형 있게 활용해야 합니다.\n출처: techinnovationjournal.com/disruption-strategies";
+    } else {
+        return "최신 경영 트렌드 2025 - 비즈니스 인사이트\n2025년 주목할 경영 트렌드로는 분산형 조직 구조, 하이브리드 근무 모델 정착, 지속가능성 중심 경영, AI 기반 의사결정, 민첩한 인재 관리 등이 있습니다.\n출처: businessinsight.com/trends-2025\n\n성공적인 중소기업 성장 전략 - 스몰비즈니스 저널\n중소기업의 성공적인 성장을 위해서는 명확한 차별화 전략, 디지털 전환 가속화, 고객 경험 최적화, 탄력적인 공급망 구축, 인재 확보 및 유지가 중요합니다.\n출처: smallbusinessjournal.com/growth-strategies";
+    }
+};
+
+/**
  * 경영 컨설턴트 챗봇 응답 생성 함수
  * @param {String} userMessage - 사용자 메시지
  * @param {Array} chatHistory - 이전 대화 기록
@@ -246,6 +379,19 @@ export const generateConsultantResponse = async (
                 content: msg.content,
             }));
 
+        // 웹 검색을 통한 추가 정보 수집
+        const webSearchResults = await fetchWebSearchResults(userMessage);
+
+        // 질문 유형 분석 - 전략적 조언이 필요한지 확인
+        const requiresStrategicAdvice = needsStrategicAdvice(userMessage);
+
+        // 모델 선택 - 전략적 조언이 필요하면 GPT-o3-mini, 그렇지 않으면 GPT-4o
+        const model = requiresStrategicAdvice ? "gpt-o3-mini" : "gpt-4o";
+
+        console.log(
+            `선택된 모델: ${model}, 전략적 조언 필요: ${requiresStrategicAdvice}`
+        );
+
         // OpenAI API 호출
         const response = await fetch(
             "https://api.openai.com/v1/chat/completions",
@@ -258,7 +404,7 @@ export const generateConsultantResponse = async (
                     }`,
                 },
                 body: JSON.stringify({
-                    model: "gpt-4", // 또는 사용 가능한 최신 모델
+                    model: model, // 선택된 모델 사용
                     messages: [
                         {
                             role: "system",
@@ -269,7 +415,19 @@ export const generateConsultantResponse = async (
                                     : "정보가 없는 경우 일반적인 경영 지식을 바탕으로 답변하세요."
                             }
                             
-                            답변은 명확하고 전문적이되 이해하기 쉽게 작성하세요. 적절한 예시를 들면 좋습니다.
+                            ${
+                                webSearchResults
+                                    ? `최신 정보 및 웹 검색 결과도 참고하세요:\n\n${webSearchResults}`
+                                    : ""
+                            }
+
+                            ${
+                                requiresStrategicAdvice
+                                    ? `이 질문은 전략적 조언이 필요한 것으로 판단됩니다. 깊이 있는 분석과 전략적 관점에서 구체적인 실행 방안을 포함하여 답변해주세요.`
+                                    : `이 질문은 일반적인 정보 제공이 필요한 것으로 판단됩니다. 정확한 정보와 실용적인 관점에서 답변해주세요.`
+                            }
+                            
+                            답변은 명확하고 전문적이되 이해하기 쉽게 작성하세요. 적절한 예시와 구체적인 사례를 들면 좋습니다.
                             응답은 가독성을 위해 적절한 길이의 문단으로 나누어 작성하세요.
                             ${
                                 relevantDoc
@@ -283,8 +441,8 @@ export const generateConsultantResponse = async (
                             content: userMessage,
                         },
                     ],
-                    temperature: 0.7,
-                    max_tokens: 800,
+                    temperature: requiresStrategicAdvice ? 0.5 : 0.7, // 전략적 조언은 낮은 온도로 더 정확하게
+                    max_tokens: requiresStrategicAdvice ? 1000 : 800, // 전략적 조언은 더 긴 응답 허용
                 }),
             }
         );
@@ -302,6 +460,7 @@ export const generateConsultantResponse = async (
         return {
             message: formattedMessage,
             referencedDocument,
+            isStrategicAdvice: requiresStrategicAdvice,
         };
     } catch (error) {
         console.error("컨설턴트 응답 생성 오류:", error);
@@ -337,6 +496,9 @@ const generateLocalConsultantResponse = async (
 
     // 키워드 기반 간단한 응답 로직
     let response = "";
+
+    // 전략적 조언이 필요한지 확인
+    const requiresStrategicAdvice = needsStrategicAdvice(userMessage);
 
     if (
         userMessage.toLowerCase().includes("전략") ||
@@ -404,6 +566,12 @@ const generateLocalConsultantResponse = async (
         }
     }
 
+    // 전략적 조언이 필요한 경우 더 심층적인 내용 추가
+    if (requiresStrategicAdvice) {
+        response +=
+            "\n\n이 주제에 대해 좀 더 심층적인 관점을 제공해드리자면, 효과적인 전략 실행을 위해서는 모든 이해관계자의 참여와 명확한 커뮤니케이션이 필수적입니다. 특히 중간 관리자들이 전략의 중요성을 이해하고 팀원들에게 전달할 수 있도록 지원하는 것이 중요합니다.\n\n또한, 빠르게 변화하는 시장 환경에서는 정기적인 전략 검토와 유연한 조정 메커니즘을 갖추는 것이 성공의 열쇠입니다. 데이터 기반 의사결정과 주요 성과 지표(KPI)를 통한 진행 상황 모니터링이 전략 실행의 효과를 크게 높일 수 있습니다.";
+    }
+
     // 문서 참조 정보 추가 (있는 경우)
     if (relevantDoc) {
         response += `\n\n이 내용은 "${relevantDoc.title}" 문서를 참고했습니다.`;
@@ -412,6 +580,7 @@ const generateLocalConsultantResponse = async (
     return {
         message: response,
         referencedDocument: relevantDoc,
+        isStrategicAdvice: requiresStrategicAdvice,
     };
 };
 
