@@ -1,7 +1,8 @@
-// src/App.jsx - 수정된 버전
+// src/App.jsx - Updated with Data Visualization feature
 import { useState, useEffect } from "react";
 import PersonaGenerator from "./components/PersonaGenerator";
 import ConsultantChatbot from "./components/ConsultantChatbot";
+import DataVisualizationDashboard from "./components/DataVisualizationDashboard";
 import { parseStatisticalData } from "./services/statisticalDataProcessor";
 import { loadConsultantFiles } from "./services/consultantService";
 import "./styles/App.css";
@@ -11,7 +12,8 @@ function App() {
     const [consultantData, setConsultantData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState("persona"); // "persona" 또는 "consultant"
+    // Updated to include "datavis" tab
+    const [activeTab, setActiveTab] = useState("persona"); // "persona", "consultant", or "datavis"
 
     useEffect(() => {
         // 통계 데이터 및 컨설턴트 파일 로드
@@ -62,7 +64,7 @@ function App() {
                 <div className="container">
                     <h1 className="header-title">AI 기반 비즈니스 솔루션</h1>
                     <p className="header-subtitle">
-                        페르소나 생성 및 경영 컨설팅 서비스
+                        페르소나 생성, 데이터 시각화 및 경영 컨설팅 서비스
                     </p>
                     <div className="tab-navigation">
                         <button
@@ -72,6 +74,14 @@ function App() {
                             onClick={() => handleTabChange("persona")}
                         >
                             페르소나 생성기
+                        </button>
+                        <button
+                            className={`tab-nav-button ${
+                                activeTab === "datavis" ? "active" : ""
+                            }`}
+                            onClick={() => handleTabChange("datavis")}
+                        >
+                            데이터 시각화
                         </button>
                         <button
                             className={`tab-nav-button ${
@@ -101,6 +111,8 @@ function App() {
                         <div className="app-content">
                             {activeTab === "persona" ? (
                                 <PersonaGenerator statsData={statsData} />
+                            ) : activeTab === "datavis" ? (
+                                <DataVisualizationDashboard />
                             ) : (
                                 <ConsultantChatbot
                                     consultantData={consultantData}

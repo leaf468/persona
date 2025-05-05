@@ -1,0 +1,295 @@
+/* src/styles/InsightPanel.css */
+
+.insight-panel {
+    width: 100%;
+}
+
+.insights-header {
+    margin-bottom: 2rem;
+}
+
+.insights-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-color, #1f2937);
+}
+
+.insights-subtitle {
+    font-size: 0.875rem;
+    color: var(--light-text, #6b7280);
+    margin-bottom: 1.5rem;
+}
+
+.summary-metrics {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.metric-item {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    flex: 1;
+    text-align: center;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: var(--light-text, #6b7280);
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+}
+
+.exec-summary {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+}
+
+.exec-summary h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    margin: 0 0 0.75rem;
+}
+
+.exec-summary p {
+    color: var(--text-color, #1f2937);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.insights-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px dashed var(--border-color, #e5e7eb);
+}
+
+.empty-icon {
+    width: 64px;
+    height: 64px;
+    color: var(--light-text, #6b7280);
+    margin-bottom: 1.5rem;
+}
+
+.insights-empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--text-color, #1f2937);
+    margin: 0 0 0.5rem;
+}
+
+.insights-empty-state p {
+    color: var(--light-text, #6b7280);
+    margin: 0;
+}
+
+.insights-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-button {
+    padding: 0.5rem 1rem;
+    background-color: #f3f4f6;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 9999px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    color: var(--light-text, #6b7280);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-button:hover {
+    background-color: #e5e7eb;
+    color: var(--text-color, #1f2937);
+}
+
+.filter-button.active {
+    background-color: var(--primary-color, #3b82f6);
+    color: white;
+    border-color: var(--primary-color, #3b82f6);
+}
+
+.insights-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.no-insights-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--light-text, #6b7280);
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.insight-card {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.insight-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    position: relative;
+}
+
+.insight-tag {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.insight-tag.general {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+}
+
+.insight-tag.trends {
+    background-color: #ecfdf5;
+    color: #065f46;
+}
+
+.insight-tag.segments {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.insight-tag.correlations {
+    background-color: #f3e8ff;
+    color: #6d28d9;
+}
+
+.insight-tag.recommendations {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.insight-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    margin: 0;
+    padding-right: 6rem;
+}
+
+.insight-body {
+    padding: 1.5rem;
+}
+
+.insight-description {
+    line-height: 1.6;
+    color: var(--text-color, #1f2937);
+    margin: 0 0 1.5rem;
+}
+
+.insight-related-questions,
+.insight-recommendations {
+    margin-bottom: 1.5rem;
+}
+
+.insight-related-questions:last-child,
+.insight-recommendations:last-child {
+    margin-bottom: 0;
+}
+
+.insight-related-questions h5,
+.insight-recommendations h5 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    margin: 0 0 0.5rem;
+}
+
+.insight-related-questions ul,
+.insight-recommendations ul {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+
+.insight-related-questions li,
+.insight-recommendations li {
+    position: relative;
+    padding-left: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--light-text, #6b7280);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.insight-related-questions li:last-child,
+.insight-recommendations li:last-child {
+    margin-bottom: 0;
+}
+
+.insight-related-questions li::before,
+.insight-recommendations li::before {
+    content: "•";
+    position: absolute;
+    left: 0.25rem;
+    color: var(--primary-color, #3b82f6);
+}
+
+.insight-footer {
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    background-color: #f9fafb;
+}
+
+.insight-confidence {
+    font-size: 0.75rem;
+    color: var(--light-text, #6b7280);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .summary-metrics {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .insight-header {
+        padding: 1rem;
+    }
+
+    .insight-body {
+        padding: 1rem;
+    }
+
+    .insight-tag {
+        top: 0.75rem;
+        right: 1rem;
+    }
+
+    .insight-footer {
+        padding: 0.75rem 1rem;
+    }
+}
