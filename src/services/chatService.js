@@ -1,5 +1,6 @@
 // src/services/chatService.js
 import { generateChatInsights } from "./insightsService";
+import { getFilledPrompt } from "./promptService";
 
 /**
  * 페르소나 기반 챗봇 응답을 생성하는 함수
@@ -20,6 +21,25 @@ export const generateChatResponse = async (
             return generateMockChatResponse(userMessage, chatHistory, persona);
         }
 
+        // 외부 파일에서 프롬프트 로드
+        const systemPrompt = await getFilledPrompt("persona_chat", {
+            name: persona.name || "",
+            age: persona.age || "",
+            gender: persona.gender || "",
+            occupation: persona.occupation || "",
+            education: persona.education || "",
+            personality: persona.personality || "",
+            behaviors: persona.behaviors || "",
+            needs: persona.needs || "",
+            goals: persona.goals || "",
+            frustrations: persona.frustrations || "",
+            dayInLife: persona.dayInLife || "",
+            quotes: Array.isArray(persona.quotes) ? persona.quotes.join(', ') : "",
+            brands: Array.isArray(persona.brands) ? persona.brands.join(', ') : "",
+            devicePreference: Array.isArray(persona.devicePreference) ? persona.devicePreference.join(', ') : "",
+            characteristics: Array.isArray(persona.characteristics) ? persona.characteristics.join(', ') : ""
+        });
+
         // API 키가 있는 경우 OpenAI API 호출
         const response = await fetch(
             "https://api.openai.com/v1/chat/completions",
@@ -36,7 +56,7 @@ export const generateChatResponse = async (
                     messages: [
                         {
                             role: "system",
-                            content: getPersonaSystemPrompt(persona),
+                            content: systemPrompt,
                         },
                         ...formatChatHistory(chatHistory),
                         {
@@ -155,26 +175,6 @@ const generateMockChatResponse = async (userMessage, chatHistory, persona) => {
     }
 };
 
-/**
- * 페르소나에 맞는 시스템 프롬프트를 생성하는 함수
- */
-const getPersonaSystemPrompt = (persona) => {
-    return `당신은 다음과 같은 특성을 가진 가상의 페르소나입니다:
-- 이름: ${persona.name}
-- 나이: ${persona.age}세
-- 성별: ${persona.gender}
-- 직업: ${persona.occupation}
-- 교육 수준: ${persona.education}
-- 성격 특성: ${persona.personality}
-- 소비 행동: ${persona.behaviors}
-- 필요성: ${persona.needs}
-- 목표: ${persona.goals}
-- 불편함: ${persona.frustrations}
-
-이 페르소나의 관점에서 사용자와 대화하세요. 페르소나의 성격, 가치관, 니즈를 반영하여 응답하세요.
-1인칭 시점으로 말하며 자연스럽고 인간적인 대화를 나누세요.
-응답은 간결하게 유지하세요 (3-4문장 이내).`;
-};
 
 /**
  * 채팅 기록을 API 요청 형식으로 변환하는 함수

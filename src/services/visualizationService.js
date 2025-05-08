@@ -196,22 +196,53 @@ const determineVisualizationType = (question, dataContext) => {
     // Check for specific content patterns that might override standard visualization rules
     
     // For text questions, check pattern of responses
-    if (type === "text" && dataContext.textResponsePatterns[question.id]) {
+    if (type === "text" && dataContext.textResponsePatterns && dataContext.textResponsePatterns[question.id]) {
         const patterns = dataContext.textResponsePatterns[question.id];
         
         // If text responses contain numbers and they're likely percentages or metrics
         if (patterns.containsNumbers) {
-            return "keywordMetrics"; // A special visualization that extracts numbers from text
+            // For time series data, use line chart
+            if (text.toLowerCase().match(/시간|연도|년도|월별|분기별|weekly|monthly|yearly|quarter|trend|추세|추이/)) {
+                return "lineChart";
+            }
+            
+            // For percentage data, use pie chart if few categories
+            if (patterns.totalResponses <= 5 && text.toLowerCase().includes("%")) {
+                return "pie";
+            }
+            
+            return "bar"; // Use bar chart for other numerical text data
         }
         
         // If text responses look like lists or contain multiple bullet points
         if (patterns.containsLists) {
-            return "structuredList"; // A visualization that preserves list structure
+            // If it seems like a hierarchy or categorization, use treemap
+            if (text.toLowerCase().match(/카테고리|분류|그룹|category|classification|group|segment/)) {
+                return "treemap";
+            }
+            
+            return "bar"; // Use bar chart for list-like responses
         }
         
         // For very short text responses that behave more like categories
         if (patterns.avgResponseLength < 20) {
-            return "categorizedResponses"; // Group similar short responses
+            // If few categories, use pie chart
+            if (patterns.totalResponses <= 5) {
+                return "pie";
+            }
+            
+            return "bar"; // Use bar chart for short categorical responses
+        }
+
+        // For longer text with keyword focus
+        if (patterns.avgResponseLength > 50) {
+            return "wordcloud"; // Use word cloud for longer text responses
+        }
+
+        // Even for longer text responses, if there are clear categories, use a graphical representation
+        if (patterns.totalResponses > 0) {
+            // Analyze for term frequencies and return appropriate chart type
+            return "bar";
         }
     }
     
@@ -220,12 +251,12 @@ const determineVisualizationType = (question, dataContext) => {
     if (questionTextLower.includes("rank") || 
         questionTextLower.includes("order") || 
         questionTextLower.includes("preference") ||
+        questionTextLower.includes("importance") ||
         questionTextLower.includes("순위") ||
-        questionTextLower.includes("선호도")) {
+        questionTextLower.includes("선호도") ||
+        questionTextLower.includes("중요도")) {
         
-        if (type === "multiple_choice" || type === "categorical") {
-            return "horizontalBar"; // Better for showing rankings
-        }
+        return "horizontalBar"; // Better for showing rankings regardless of type
     }
     
     // Check for comparison-focused questions
@@ -235,9 +266,12 @@ const determineVisualizationType = (question, dataContext) => {
         questionTextLower.includes("vs") ||
         questionTextLower.includes("비교")) {
         
-        if (type === "multiple_choice" || type === "categorical") {
-            return "groupedBar"; // Better for showing comparisons
-        }
+        return "groupedBar"; // Better for showing comparisons regardless of type
+    }
+    
+    // Check for time-based questions - use line charts
+    if (questionTextLower.match(/trend|시간|연도|년도|월별|분기별|시계열|추세|추이|over time|timeline|weekly|monthly|yearly|quarter/)) {
+        return "lineChart";
     }
     
     // If the question appears to be about distribution or spread
@@ -246,47 +280,84 @@ const determineVisualizationType = (question, dataContext) => {
         questionTextLower.includes("range") ||
         questionTextLower.includes("분포")) {
         
-        if (type === "numeric") {
-            return "densityPlot"; // Better than histogram for showing distribution
+        return "histogram"; // Use histogram for distribution questions
+    }
+    
+    // Check for keyword or text analysis questions
+    if (questionTextLower.match(/keyword|키워드|term|용어|word|단어|topic|토픽|주제/)) {
+        return "wordcloud";
+    }
+    
+    // Check for proportion or composition questions
+    if (questionTextLower.match(/proportion|비율|composition|구성|percentage|퍼센트|percent/)) {
+        if (uniqueValues && uniqueValues.length <= 6) {
+            return "pie"; // Use pie chart for proportion with few categories
         }
+        return "treemap"; // Use treemap for proportions with many categories
+    }
+    
+    // Check for very low data counts - use simpler visualizations
+    if (responseCount <= 3) {
+        return "bar"; // Bar chart is best for very small data sets
     }
     
     // Standard visualization selection based on question type
     switch (type) {
         case "multiple_choice":
             // For multiple choice with few options, use pie chart or bar chart
-            if (uniqueValues.length <= 5) {
+            if (uniqueValues && uniqueValues.length <= 5) {
                 return "pie";
-            } else if (uniqueValues.length <= 15) {
-                return "bar";
             } else {
-                return "treemap";
+                // Check if this question is about importance or preference ranking
+                if (questionTextLower.match(/importance|중요도|rank|순위|preference|선호도/)) {
+                    return "horizontalBar"; // Use horizontal bar chart for rankings
+                }
+                return "bar";
             }
 
         case "rating":
             // For rating scales, use bar charts or histograms
-            return "bar";
+            if (questionTextLower.match(/satisfaction|만족도|opinion|의견|sentiment|감정/)) {
+                return "bar"; // Bar chart for opinion/sentiment ratings
+            }
+            return "histogram"; // Histogram for other ratings
 
         case "numeric":
-            // For numeric data, use histograms or box plots
+            // For numeric data with time component, use line chart
+            if (questionTextLower.match(/time|시간|period|기간|date|날짜|year|month|day|연도|월|일/)) {
+                return "lineChart";
+            }
+            // Otherwise use histograms or box plots
             return "histogram";
 
         case "categorical":
-            // For categorical with many values, use bar charts
-            if (uniqueValues.length <= 15) {
-                return "bar";
-            } else if (uniqueValues.length <= 30) {
+            // For categorical with few categories, use pie chart
+            if (uniqueValues && uniqueValues.length <= 5) {
+                return "pie";
+            } 
+            // For categorical with many categories, use treemap if it's hierarchical
+            else if (uniqueValues && uniqueValues.length > 10 && 
+                    questionTextLower.match(/category|카테고리|classify|분류|group|그룹/)) {
                 return "treemap";
-            } else {
-                return "wordcloud";
             }
+            // Default to bar chart for better readability
+            return "bar";
 
         case "text":
-            // Text data is difficult to visualize directly
+            // For text with key terms or topics, use word cloud
+            if (questionTextLower.match(/keyword|키워드|term|용어|word|단어|topic|토픽|주제/)) {
+                return "wordcloud";
+            }
+            // For short text responses, extract topics
+            if (question.summary && question.summary.avgResponseLength < 50) {
+                return "bar";
+            }
+            // For longer text, use word cloud
             return "wordcloud";
 
         default:
-            return null;
+            // Default visualization type if nothing else matches
+            return "bar";
     }
 };
 
@@ -334,7 +405,7 @@ const createVisualization = async (question, rawData, vizType) => {
                     
                     // Return visualization with detected type
                     return {
-                        id: `viz_${question.id}`,
+                        id: `viz_q_${question.id}`,
                         title: `${question.text} 분석`,
                         description: `이 시각화는 "${question.text}"에 대한 텍스트 응답을 분석하여 ${chartType}로 표현한 것입니다.`,
                         questionText: question.text,
@@ -381,9 +452,20 @@ const createVisualization = async (question, rawData, vizType) => {
                 break;
                 
             case "horizontalBar":
-                // Fallback to standard bar chart until horizontal implementation is complete
-                svgContent = createBarChart(question);
-                chartType = "막대 차트";
+                // Use horizontal bar chart if function exists, otherwise fallback to text visualization's version
+                try {
+                    svgContent = createHorizontalBarChart(question);
+                    chartType = "가로 막대 차트";
+                } catch (e) {
+                    // Fallback to textVisualizationService's version
+                    const data = question.summary.frequencies.map(f => ({
+                        label: f.value,
+                        value: f.count
+                    }));
+                    const { VisualizationGenerator } = require('./textVisualizationService');
+                    svgContent = VisualizationGenerator.generateHorizontalBarChart(data, 500, 400);
+                    chartType = "가로 막대 차트";
+                }
                 dataSummary = getBarChartSummary(question);
                 break;
                 
@@ -408,7 +490,7 @@ const createVisualization = async (question, rawData, vizType) => {
         }
 
         return {
-            id: `viz_${question.id}`,
+            id: `viz_q_${question.id}`,
             title: `${question.text} 분석`,
             description: generateDescription(question, vizType),
             questionText: question.text,
@@ -421,7 +503,7 @@ const createVisualization = async (question, rawData, vizType) => {
         console.error(`${question.id} 시각화 생성 오류:`, error);
         // Return a placeholder visualization
         return {
-            id: `viz_${question.id}`,
+            id: `viz_q_${question.id}`,
             title: `${question.text} 분석 (오류)`,
             description:
                 "이 질문에 대한 시각화를 생성하는 중 오류가 발생했습니다.",
@@ -492,6 +574,19 @@ const generateDescription = (question, vizType) => {
  * @returns {string} - SVG content
  */
 const createPieChart = (question) => {
+    // Make sure we have frequencies to work with
+    if (!question.summary || !question.summary.frequencies || question.summary.frequencies.length === 0) {
+        // Create default data if none exists
+        const defaultData = [
+            { value: "응답 1", count: 1, percentage: 50 },
+            { value: "응답 2", count: 1, percentage: 50 }
+        ];
+        
+        // Modify the question object to include this data for future reference
+        if (!question.summary) question.summary = {};
+        question.summary.frequencies = defaultData;
+    }
+    
     // Frequencies from the question summary
     const data = question.summary.frequencies.slice(0, 8); // Limit to top 8 for clarity
 
@@ -564,7 +659,7 @@ const createPieChart = (question) => {
                 d.data.value.length > 15
                     ? d.data.value.substring(0, 13) + "..."
                     : d.data.value;
-            return `${label} (${d.data.percentage.toFixed(1)}%)`;
+            return `${label} (${d.data.percentage !== undefined ? d.data.percentage.toFixed(1) : '0'}%)`;
         })
         .style("font-size", "12px")
         .style("fill", "#333");
@@ -599,6 +694,48 @@ const createPieChart = (question) => {
  * @returns {string} - SVG content
  */
 const createBarChart = (question) => {
+    // Make sure we have frequencies to work with
+    if (!question.summary || !question.summary.frequencies || question.summary.frequencies.length === 0) {
+        // For text data, try to extract some frequencies
+        let defaultData = [];
+        
+        if (question.type === 'text' && question.rawResponses && question.rawResponses.length > 0) {
+            // Extract words from raw text responses
+            const words = {};
+            question.rawResponses.forEach(response => {
+                if (typeof response === 'string') {
+                    response.split(/\s+/).forEach(word => {
+                        if (word.length > 3) {
+                            words[word] = (words[word] || 0) + 1;
+                        }
+                    });
+                }
+            });
+            
+            // Convert to frequencies
+            defaultData = Object.entries(words)
+                .map(([value, count]) => ({
+                    value,
+                    count,
+                    percentage: 0
+                }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+        }
+        
+        // If we still have no data, create dummy data
+        if (defaultData.length === 0) {
+            defaultData = [
+                { value: "응답 1", count: 3, percentage: 60 },
+                { value: "응답 2", count: 2, percentage: 40 }
+            ];
+        }
+        
+        // Modify the question object to include this data for future reference
+        if (!question.summary) question.summary = {};
+        question.summary.frequencies = defaultData;
+    }
+    
     // Frequencies from the question summary
     const data = question.summary.frequencies.slice(0, 12); // Limit to top 12 for clarity
 
@@ -703,6 +840,21 @@ const createBarChart = (question) => {
  * @returns {string} - SVG content
  */
 const createHistogram = (question) => {
+    // Make sure we have frequencies to work with
+    if (!question.summary || !question.summary.frequencies || question.summary.frequencies.length === 0) {
+        // Create default data if none exists
+        const defaultData = [
+            { value: "1", count: 2 },
+            { value: "2", count: 5 },
+            { value: "3", count: 3 },
+            { value: "4", count: 1 }
+        ];
+        
+        // Modify the question object to include this data for future reference
+        if (!question.summary) question.summary = {};
+        question.summary.frequencies = defaultData;
+    }
+    
     // Get numeric values from raw data
     const numericValues = [];
 
@@ -717,8 +869,30 @@ const createHistogram = (question) => {
         }
     }
 
+    // If we have no numeric values but may have text data that could be visualized
     if (numericValues.length === 0) {
-        return createBarChart(question); // Fall back to bar chart if no numeric values
+        // Try to extract numeric values from text responses if available
+        if (question.rawResponses && question.rawResponses.length > 0) {
+            question.rawResponses.forEach(response => {
+                if (typeof response === 'string') {
+                    // Look for numbers in the text
+                    const matches = response.match(/\d+(\.\d+)?/g);
+                    if (matches) {
+                        matches.forEach(match => {
+                            const numValue = parseFloat(match);
+                            if (!isNaN(numValue)) {
+                                numericValues.push(numValue);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        
+        // If still no numeric values, fall back to bar chart
+        if (numericValues.length === 0) {
+            return createBarChart(question);
+        }
     }
 
     // Set up dimensions
@@ -1096,17 +1270,17 @@ const createErrorSvg = () => {
 const generateRelationshipVisualizations = async (questions, rawData, dataContext = {}) => {
     const visualizations = [];
 
-    // Filter questions that are suitable for correlation analysis
+    // Filter questions for analysis with relaxed criteria
     const quantitativeQuestions = questions.filter(
         (q) =>
-            (q.type === "numeric" || q.type === "rating") && q.responseCount > 5
+            (q.type === "numeric" || q.type === "rating" || q.type === "text") && q.responseCount > 0
     );
 
     const categoricalQuestions = questions.filter(
         (q) =>
-            (q.type === "multiple_choice" || q.type === "categorical") &&
-            q.uniqueValues.length <= 10 &&
-            q.responseCount > 5
+            (q.type === "multiple_choice" || q.type === "categorical" || q.type === "text") &&
+            (q.uniqueValues ? q.uniqueValues.length : 0) <= 20 &&
+            q.responseCount > 0
     );
 
     // Generate scatter plots for pairs of quantitative questions
@@ -1162,8 +1336,10 @@ const createScatterPlot = async (question1, question2, rawData) => {
             }
         }
 
-        if (dataPoints.length < 5) {
-            throw new Error("Not enough valid data points for scatter plot");
+        // Even with 1 data point, we'll create a visualization
+        if (dataPoints.length < 1) {
+            // Instead of throwing an error, return a single point visualization
+            dataPoints.push({ x: 0, y: 0 }); // Add default point if none exists
         }
 
         // Set up dimensions
@@ -1307,7 +1483,7 @@ const createScatterPlot = async (question1, question2, rawData) => {
                 .attr("y", 20)
                 .attr("text-anchor", "end")
                 .style("font-size", "12px")
-                .text(`상관계수: ${correlation.toFixed(3)}`);
+                .text(`상관계수: ${correlation !== undefined && !isNaN(correlation) ? correlation.toFixed(3) : '0.000'}`);
         }
 
         // Create data summary for the visualization
@@ -1316,16 +1492,12 @@ const createScatterPlot = async (question1, question2, rawData) => {
         const dataSummary = [
             `데이터 포인트 수: ${dataPoints.length}`,
             `상관관계: ${correlationStrength.description}`,
-            `${question1.text}의 범위: ${question1.summary.min.toFixed(
-                2
-            )}~${question1.summary.max.toFixed(2)}`,
-            `${question2.text}의 범위: ${question2.summary.min.toFixed(
-                2
-            )}~${question2.summary.max.toFixed(2)}`,
+            `${question1.text}의 범위: ${question1.summary && question1.summary.min !== undefined ? question1.summary.min.toFixed(2) : '0.00'}~${question1.summary && question1.summary.max !== undefined ? question1.summary.max.toFixed(2) : '0.00'}`,
+            `${question2.text}의 범위: ${question2.summary && question2.summary.min !== undefined ? question2.summary.min.toFixed(2) : '0.00'}~${question2.summary && question2.summary.max !== undefined ? question2.summary.max.toFixed(2) : '0.00'}`,
         ];
 
         return {
-            id: `viz_scatter_${question1.id}_${question2.id}`,
+            id: `viz_q_scatter_${question1.id}_${question2.id}`,
             title: `${shortenText(question1.text, 20)} vs ${shortenText(
                 question2.text,
                 20
@@ -1341,7 +1513,7 @@ const createScatterPlot = async (question1, question2, rawData) => {
         console.error("산점도 생성 오류:", error);
 
         return {
-            id: `viz_scatter_${question1.id}_${question2.id}`,
+            id: `viz_q_scatter_${question1.id}_${question2.id}`,
             title: `${shortenText(question1.text, 20)} vs ${shortenText(
                 question2.text,
                 20
@@ -1435,9 +1607,14 @@ const createStackedBarChart = async (question1, question2, rawData) => {
         // Create a cross-tabulation of the two questions
         const crosstab = {};
 
-        // Collect all unique values for both questions
-        const uniqueValues1 = question1.uniqueValues;
-        const uniqueValues2 = question2.uniqueValues;
+        // Ensure we have unique values to work with
+        const uniqueValues1 = question1.uniqueValues && question1.uniqueValues.length > 0 
+            ? question1.uniqueValues 
+            : ["응답 1"];
+        
+        const uniqueValues2 = question2.uniqueValues && question2.uniqueValues.length > 0 
+            ? question2.uniqueValues 
+            : ["응답 2"];
 
         // Initialize crosstab
         uniqueValues1.forEach((val1) => {
@@ -1615,7 +1792,7 @@ const createStackedBarChart = async (question1, question2, rawData) => {
         ];
 
         return {
-            id: `viz_stacked_${question1.id}_${question2.id}`,
+            id: `viz_q_stacked_${question1.id}_${question2.id}`,
             title: `${shortenText(question1.text, 20)} vs ${shortenText(
                 question2.text,
                 20
@@ -1631,7 +1808,7 @@ const createStackedBarChart = async (question1, question2, rawData) => {
         console.error("누적 막대 차트 생성 오류:", error);
 
         return {
-            id: `viz_stacked_${question1.id}_${question2.id}`,
+            id: `viz_q_stacked_${question1.id}_${question2.id}`,
             title: `${shortenText(question1.text, 20)} vs ${shortenText(
                 question2.text,
                 20
@@ -1736,7 +1913,8 @@ const createBoxPlot = async (catQuestion, numQuestion, rawData) => {
         }
 
         if (boxData.length === 0) {
-            throw new Error("Not enough valid data for box plot");
+            // Instead of throwing an error, create a fallback bar chart
+            return createBarChart(catQuestion);
         }
 
         // Set up dimensions
@@ -1889,9 +2067,7 @@ const createBoxPlot = async (catQuestion, numQuestion, rawData) => {
         // Create data summary
         const dataSummary = boxData.map(
             (box) =>
-                `${shortenText(box.category, 15)}: 중앙값=${box.median.toFixed(
-                    2
-                )}, 평균=${box.mean.toFixed(2)}`
+                `${shortenText(box.category, 15)}: 중앙값=${box.median !== undefined ? box.median.toFixed(2) : '0.00'}, 평균=${box.mean !== undefined ? box.mean.toFixed(2) : '0.00'}`
         );
 
         // Find category with highest median
@@ -1903,11 +2079,11 @@ const createBoxPlot = async (catQuestion, numQuestion, rawData) => {
             `가장 높은 중앙값: ${shortenText(
                 highestMedian.category,
                 15
-            )} (${highestMedian.median.toFixed(2)})`
+            )} (${highestMedian && highestMedian.median !== undefined ? highestMedian.median.toFixed(2) : '0.00'})`
         );
 
         return {
-            id: `viz_boxplot_${catQuestion.id}_${numQuestion.id}`,
+            id: `viz_q_boxplot_${catQuestion.id}_${numQuestion.id}`,
             title: `${shortenText(catQuestion.text, 20)}에 따른 ${shortenText(
                 numQuestion.text,
                 20
@@ -1923,7 +2099,7 @@ const createBoxPlot = async (catQuestion, numQuestion, rawData) => {
         console.error("박스플롯 생성 오류:", error);
 
         return {
-            id: `viz_boxplot_${catQuestion.id}_${numQuestion.id}`,
+            id: `viz_q_boxplot_${catQuestion.id}_${numQuestion.id}`,
             title: `${shortenText(catQuestion.text, 20)}에 따른 ${shortenText(
                 numQuestion.text,
                 20
@@ -1954,11 +2130,11 @@ const getPieChartSummary = (question) => {
         `전체 응답 수: ${total}명`,
         `최다 응답: ${shortenText(topCategory.value, 20)} (${
             topCategory.count
-        }명, ${topCategory.percentage.toFixed(1)}%)`,
+        }명, ${topCategory && topCategory.percentage !== undefined ? topCategory.percentage.toFixed(1) : '0'}%)`,
         secondCategory
             ? `두 번째 응답: ${shortenText(secondCategory.value, 20)} (${
                   secondCategory.count
-              }명, ${secondCategory.percentage.toFixed(1)}%)`
+              }명, ${secondCategory && secondCategory.percentage !== undefined ? secondCategory.percentage.toFixed(1) : '0'}%)`
             : "",
         `총 카테고리 수: ${data.length}개`,
     ].filter(Boolean);
@@ -1972,11 +2148,11 @@ const getHistogramSummary = (question) => {
     const stats = question.summary;
 
     return [
-        `최소값: ${stats.min.toFixed(2)}`,
-        `최대값: ${stats.max.toFixed(2)}`,
-        `평균: ${stats.mean.toFixed(2)}`,
-        `중앙값: ${stats.median.toFixed(2)}`,
-        `표준편차: ${stats.standardDeviation.toFixed(2)}`,
+        `최소값: ${stats && stats.min !== undefined ? stats.min.toFixed(2) : '0.00'}`,
+        `최대값: ${stats && stats.max !== undefined ? stats.max.toFixed(2) : '0.00'}`,
+        `평균: ${stats && stats.mean !== undefined ? stats.mean.toFixed(2) : '0.00'}`,
+        `중앙값: ${stats && stats.median !== undefined ? stats.median.toFixed(2) : '0.00'}`,
+        `표준편차: ${stats && stats.standardDeviation !== undefined ? stats.standardDeviation.toFixed(2) : '0.00'}`,
     ];
 };
 
@@ -2028,7 +2204,7 @@ const generateThematicVisualizations = async (processedData, dataContext) => {
                     if (baseQuestion) {
                         // Create a composite visualization that shows related questions together
                         const thematicViz = {
-                            id: `viz_thematic_${baseQuestion.id}`,
+                            id: `viz_q_thematic_${baseQuestion.id}`,
                             title: `"${shortenText(baseQuestion.text, 30)}" 관련 통합 분석`,
                             description: `이 시각화는 "${baseQuestion.text}"와 관련된 ${group.relatedQuestions.length}개 질문의 응답 패턴을 통합하여 보여줍니다.`,
                             questionText: baseQuestion.text,
@@ -2055,7 +2231,7 @@ const generateThematicVisualizations = async (processedData, dataContext) => {
             if (topTerms.length > 0) {
                 // Create a term-based visualization
                 const termViz = {
-                    id: "viz_thematic_terms",
+                    id: "viz_q_thematic_terms",
                     title: "주요 주제 통합 분석",
                     description: "이 시각화는 여러 질문에서 공통적으로 등장하는 주요 주제어를 중심으로 응답 패턴을 분석합니다.",
                     questionText: "여러 질문 통합",

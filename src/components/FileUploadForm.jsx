@@ -5,6 +5,7 @@ import "../styles/FileUploadForm.css";
 const FileUploadForm = ({ onFileUpload }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [surveyContext, setSurveyContext] = useState("");
     const fileInputRef = useRef(null);
 
     // Check if the file is a valid CSV or Excel file
@@ -58,6 +59,11 @@ const FileUploadForm = ({ onFileUpload }) => {
         setSelectedFile(file);
     };
 
+    // Handle context text change
+    const handleContextChange = (e) => {
+        setSurveyContext(e.target.value);
+    };
+
     // Open file dialog
     const handleSelectFileClick = () => {
         fileInputRef.current.click();
@@ -67,7 +73,7 @@ const FileUploadForm = ({ onFileUpload }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (selectedFile) {
-            onFileUpload(selectedFile);
+            onFileUpload(selectedFile, surveyContext);
         }
     };
 
@@ -136,6 +142,30 @@ const FileUploadForm = ({ onFileUpload }) => {
                                 </p>
                             </>
                         )}
+                    </div>
+                </div>
+
+                <div className="survey-context-container">
+                    <h3>설문 맥락 정보 (선택사항)</h3>
+                    <p className="context-description">
+                        설문에 대한 추가 정보를 입력하면 더 정확한 시각화와 인사이트를 생성할 수 있습니다.
+                    </p>
+                    <textarea
+                        className="survey-context-input"
+                        placeholder="설문의 목적, 대상, 시장, 기대하는 결과 등을 입력하세요. 예: '20-30대 여성을 대상으로 한 화장품 선호도 조사로, 신제품 출시를 위한 시장 조사입니다.'"
+                        value={surveyContext}
+                        onChange={handleContextChange}
+                        rows={5}
+                    ></textarea>
+                    <div className="context-suggestions">
+                        <h4>입력 도움말:</h4>
+                        <ul>
+                            <li>어떤 목적으로 설문을 진행했나요?</li>
+                            <li>설문 대상은 누구인가요? (연령, 성별, 직업 등)</li>
+                            <li>어떤 시장이나 분야를 분석하고 있나요?</li>
+                            <li>어떤 결론이나 결과를 얻고자 하나요?</li>
+                            <li>이 데이터로 해결하려는 문제는 무엇인가요?</li>
+                        </ul>
                     </div>
                 </div>
 

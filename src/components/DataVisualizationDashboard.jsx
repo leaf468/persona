@@ -22,14 +22,20 @@ const DataVisualizationDashboard = () => {
     const [activeTab, setActiveTab] = useState("visualizations"); // "visualizations" or "insights"
 
     // Process file when uploaded
-    const handleFileUpload = async (uploadedFile) => {
+    const handleFileUpload = async (uploadedFile, surveyContext) => {
         setFile(uploadedFile);
         setError(null);
         setIsProcessing(true);
 
         try {
-            // Process the file data
+            // Process the file data with context
             const processedData = await processDataFile(uploadedFile);
+            
+            // Add survey context to the processed data if provided
+            if (surveyContext) {
+                processedData.surveyContext = surveyContext;
+            }
+            
             setFileData(processedData);
 
             // Generate visualizations automatically
@@ -40,7 +46,7 @@ const DataVisualizationDashboard = () => {
             setVisualizations(generatedVisualizations);
             setIsGeneratingViz(false);
 
-            // Generate insights
+            // Generate insights with context information
             setIsGeneratingInsights(true);
             const generatedInsights = await generateInsights(processedData);
             setInsights(generatedInsights);

@@ -1,4 +1,5 @@
 // src/services/consultantService.js
+import { getFilledPrompt } from "./promptService";
 
 /**
  * 경영 컨설턴트 챗봇 서비스
@@ -386,7 +387,7 @@ export const generateConsultantResponse = async (
         const requiresStrategicAdvice = needsStrategicAdvice(userMessage);
 
         // 모델 선택 - 전략적 조언이 필요하면 GPT-o3-mini, 그렇지 않으면 GPT-4o
-        const model = requiresStrategicAdvice ? "gpt-o3-mini" : "gpt-4o";
+        const model = requiresStrategicAdvice ? "o4-mini" : "gpt-4o";
 
         console.log(
             `선택된 모델: ${model}, 전략적 조언 필요: ${requiresStrategicAdvice}`
@@ -408,32 +409,23 @@ export const generateConsultantResponse = async (
                     messages: [
                         {
                             role: "system",
-                            content: `당신은 전문 경영 컨설턴트입니다. 비즈니스 전략, 마케팅, 인사 관리, 재무 관리 등 다양한 경영 분야에 대한 전문 지식을 가지고 있습니다.
-                            ${
-                                contextInfo
-                                    ? `다음 정보를 참고하여 질문에 대답하세요: \n\n${contextInfo}`
-                                    : "정보가 없는 경우 일반적인 경영 지식을 바탕으로 답변하세요."
-                            }
-                            
-                            ${
-                                webSearchResults
-                                    ? `최신 정보 및 웹 검색 결과도 참고하세요:\n\n${webSearchResults}`
-                                    : ""
-                            }
-
-                            ${
-                                requiresStrategicAdvice
-                                    ? `이 질문은 전략적 조언이 필요한 것으로 판단됩니다. 깊이 있는 분석과 전략적 관점에서 구체적인 실행 방안을 포함하여 답변해주세요.`
-                                    : `이 질문은 일반적인 정보 제공이 필요한 것으로 판단됩니다. 정확한 정보와 실용적인 관점에서 답변해주세요.`
-                            }
-                            
-                            답변은 명확하고 전문적이되 이해하기 쉽게 작성하세요. 적절한 예시와 구체적인 사례를 들면 좋습니다.
-                            응답은 가독성을 위해 적절한 길이의 문단으로 나누어 작성하세요.
-                            ${
-                                relevantDoc
-                                    ? `참고한 문서: "${relevantDoc.title}"`
-                                    : ""
-                            }`,
+                            content: await getFilledPrompt(
+                                requiresStrategicAdvice ? "consultant_strategic" : "consultant_chat", 
+                                {
+                                    contextInfo: contextInfo
+                                        ? `다음 정보를 참고하여 질문에 대답하세요: \n\n${contextInfo}`
+                                        : "정보가 없는 경우 일반적인 경영 지식을 바탕으로 답변하세요.",
+                                    webSearchResults: webSearchResults
+                                        ? `최신 정보 및 웹 검색 결과도 참고하세요:\n\n${webSearchResults}`
+                                        : "",
+                                    strategyGuidance: requiresStrategicAdvice
+                                        ? await getFilledPrompt("consultant_strategic")
+                                        : "이 질문은 일반적인 정보 제공이 필요한 것으로 판단됩니다. 정확한 정보와 실용적인 관점에서 답변해주세요.",
+                                    docReference: relevantDoc
+                                        ? `참고한 문서: "${relevantDoc.title}"`
+                                        : ""
+                                }
+                            ),
                         },
                         ...formattedHistory,
                         {

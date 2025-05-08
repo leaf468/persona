@@ -8,7 +8,13 @@ const VisualizationGallery = ({ visualizations, isLoading }) => {
 
     // Handle visualization selection
     const handleVizSelect = (vizId) => {
-        setSelectedViz(visualizations.find((viz) => viz.id === vizId));
+        const selected = visualizations.find((viz) => viz.id === vizId);
+        if (selected) {
+            setSelectedViz(selected);
+            console.log("Selected visualization:", vizId, selected.title);
+        } else {
+            console.error("Visualization not found with ID:", vizId);
+        }
     };
 
     // Close the detail view
@@ -113,9 +119,9 @@ const VisualizationGallery = ({ visualizations, isLoading }) => {
                     </h3>
 
                     <div className="viz-grid">
-                        {visualizations.map((viz) => (
+                        {visualizations.map((viz, index) => (
                             <div
-                                key={viz.id}
+                                key={`${viz.id}_${index}`}
                                 className="viz-card"
                                 onClick={() => handleVizSelect(viz.id)}
                             >

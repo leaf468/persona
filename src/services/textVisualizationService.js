@@ -50,10 +50,19 @@ export class TextAnalyzer {
    * @returns {boolean} True if metrics patterns are found
    */
   static containsMetrics(text) {
-    // Look for patterns like "X: Y%" or "X is Y%" or "X% of Y"
-    const metricsPattern = /(\d+(\.\d+)?%)|(\w+\s*:\s*\d+(\.\d+)?%?)|(is\s+\d+(\.\d+)?%)/gi;
+    // Look for patterns like "X: Y%" or "X is Y%" or "X% of Y" or "X: Y"
+    const metricsPattern = /(\d+(\.\d+)?%)|(\w+\s*:\s*\d+(\.\d+)?%?)|(is\s+\d+(\.\d+)?%)|(\w+\s*[:：]\s*\d+(\.\d+)?)|(\d+(\.\d+)?%\s+of\s+[\w\s]+)/gi;
     const matches = text.match(metricsPattern) || [];
-    return matches.length >= 3; // Need at least 3 metrics to make a chart worthwhile
+    
+    // Also look for numerical data in Korean format
+    const koreanMetricsPattern = /(\d+(\.\d+)?[%％])|([가-힣]+\s*[:：]\s*\d+(\.\d+)?)|([가-힣]+[은는이가]\s+\d+(\.\d+)?)/g;
+    const koreanMatches = text.match(koreanMetricsPattern) || [];
+    
+    // Also look for structured data like tables, indicated by consistent formatting
+    const structuredPattern = /(\d+[.,]?\d*)\s+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)/g;
+    const structuredMatches = text.match(structuredPattern) || [];
+    
+    return (matches.length + koreanMatches.length) >= 2 || structuredMatches.length >= 1; // Need at least 2 metrics to make a chart worthwhile
   }
   
   /**
@@ -135,14 +144,22 @@ export class TextAnalyzer {
    */
   static containsComparisons(text) {
     // Look for comparison patterns like "X compared to Y" or "X vs Y"
-    const comparisonPattern = /compared to|versus|vs\.?|higher than|lower than|more than|less than|greater than|better than|worse than/gi;
+    const comparisonPattern = /compared to|versus|vs\.?|higher than|lower than|more than|less than|greater than|better than|worse than|over|under|outperform|underperform|exceed|fall short|contrast|differ/gi;
     const matches = text.match(comparisonPattern) || [];
+    
+    // Korean comparison patterns
+    const koreanComparisonPattern = /비교|대비|차이|보다 높은|보다 낮은|더 많은|더 적은|상회|하회|초과|미만|대조|구분|상대적/g;
+    const koreanMatches = text.match(koreanComparisonPattern) || [];
     
     // Also check for bullet points with numbers
     const bulletPointPattern = /[•\-*]\s*.*?\d+/g;
     const bulletMatches = text.match(bulletPointPattern) || [];
     
-    return matches.length >= 2 || bulletMatches.length >= 3;
+    // Check for tabular data that might indicate comparisons
+    const tableRowPattern = /(\w+[\s\t]+\d+[\s\t]+\d+)/g;
+    const tableMatches = text.match(tableRowPattern) || [];
+    
+    return (matches.length + koreanMatches.length) >= 1 || bulletMatches.length >= 3 || tableMatches.length >= 2;
   }
   
   /**
@@ -221,14 +238,23 @@ export class TextAnalyzer {
    */
   static containsTimeSeriesData(text) {
     // Look for date/time patterns followed by numbers
-    const timeSeriesPattern = /(in|during|by|from|since|year|month|quarter|week|day)s?\s+\d{4}|\d{4}\s*-\s*\d{4}|(\d{1,2}\/\d{1,2}\/\d{2,4})/gi;
+    const timeSeriesPattern = /(in|during|by|from|since|year|month|quarter|week|day)s?\s+\d{4}|\d{4}\s*-\s*\d{4}|(\d{1,2}\/\d{1,2}\/\d{2,4})|(\d{4}년)|(\d{1,2}월)|(\d{1,2}분기)|(\d{1,2}주차)/gi;
     const matches = text.match(timeSeriesPattern) || [];
     
-    // Also look for growth/trend language
-    const trendPattern = /increase|decrease|growth|decline|trend|grew|rate|rose|fell|dropped/gi;
+    // Also look for growth/trend language (English)
+    const trendPattern = /increase|decrease|growth|decline|trend|grew|rate|rose|fell|dropped|progression|evolution|development|historical|forecast|projection|trajectory|over time|chronological|periodic|annually|monthly|quarterly|weekly|daily/gi;
     const trendMatches = text.match(trendPattern) || [];
     
-    return matches.length >= 2 || (matches.length >= 1 && trendMatches.length >= 2);
+    // Korean trend language
+    const koreanTrendPattern = /증가|감소|성장|하락|추세|추이|경향|변화|흐름|발전|예측|전망|연도별|월별|분기별|주간|일별|시계열/g;
+    const koreanTrendMatches = text.match(koreanTrendPattern) || [];
+    
+    // Also look for sequences of years with data
+    const yearSequencePattern = /(\d{4}).*?(\d+(\.\d+)?).*?(\d{4}).*?(\d+(\.\d+)?)/g;
+    const yearSequenceMatches = text.match(yearSequencePattern) || [];
+    
+    return matches.length >= 2 || yearSequenceMatches.length >= 1 || 
+           (matches.length >= 1 && (trendMatches.length + koreanTrendMatches.length) >= 1);
   }
   
   /**
@@ -289,11 +315,23 @@ export class TextAnalyzer {
    * @returns {boolean} True if categorical patterns are found
    */
   static containsCategoricalData(text) {
-    // Look for patterns like "X% of respondents" or "X% said" or "X% selected"
-    const categoryPattern = /(\d+(\.\d+)?%)\s+of\s+(respondents|participants|users|customers|people)|(selected|chose|reported|identified|said|mentioned|preferred)/gi;
+    // Look for patterns like "X% of respondents" or "X% said" or "X% selected" (English)
+    const categoryPattern = /(\d+(\.\d+)?%)\s+of\s+(respondents|participants|users|customers|people|survey|students|employees)|(selected|chose|reported|identified|said|mentioned|preferred|indicated|answered|responded|opted|picked)/gi;
     const matches = text.match(categoryPattern) || [];
     
-    return matches.length >= 2;
+    // Korean patterns for categories with frequencies
+    const koreanCategoryPattern = /(\d+(\.\d+)?[%％])\s*의\s*([가-힣]+)|(응답자|참여자|사용자|고객|학생|직원|설문자).*?(\d+(\.\d+)?[%％])|([가-힣]+[은는이가]\s+\d+(\.\d+)?[%％])/g;
+    const koreanMatches = text.match(koreanCategoryPattern) || [];
+    
+    // Look for category lists with frequencies
+    const categoryListPattern = /([A-Za-z가-힣]+[\s]*)+:[\s]*\d+(\.\d+)?%?/g;
+    const categoryListMatches = text.match(categoryListPattern) || [];
+    
+    // Look for category items followed by parenthesized percentages
+    const parenthesisPattern = /([A-Za-z가-힣\s]+)\s*\((\d+(\.\d+)?%?)\)/g;
+    const parenthesisMatches = text.match(parenthesisPattern) || [];
+    
+    return (matches.length + koreanMatches.length + categoryListMatches.length + parenthesisMatches.length) >= 2;
   }
   
   /**
@@ -355,15 +393,28 @@ export class TextAnalyzer {
    * @returns {boolean} True if ranking patterns are found
    */
   static containsRankingData(text) {
-    // Look for ranking language
-    const rankingPattern = /\b(top|ranked|ranking|score|rating|most|highest|first|second|third|fourth|fifth)\b/gi;
+    // Look for ranking language (English)
+    const rankingPattern = /\b(top|ranked|ranking|rank|score|rating|most|highest|lowest|first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th|best|worst|leading|foremost|premier|primary|main|key|major|priority|important)\b/gi;
     const matches = text.match(rankingPattern) || [];
     
+    // Korean ranking language
+    const koreanRankingPattern = /\b(순위|등급|점수|평가|최고|최상|최하|최저|1위|2위|3위|4위|5위|일등|이등|삼등|사등|오등|주요|핵심|중요|우선순위)\b/g;
+    const koreanMatches = text.match(koreanRankingPattern) || [];
+    
     // Look for numbered lists
-    const numberedListPattern = /\b(\d+)\.\s+([^.0-9]+)/g;
+    const numberedListPattern = /\b(\d+)[\.|\)]\s+([^.0-9]+)/g;
     const numberedMatches = text.match(numberedListPattern) || [];
     
-    return matches.length >= 3 || numberedMatches.length >= 3;
+    // Look for ranking expressions with numbers
+    const rankNumberPattern = /(ranked|순위는|등은|위는)\s+#?\d+/g;
+    const rankNumberMatches = text.match(rankNumberPattern) || [];
+    
+    // Look for hierarchical patterns like "X > Y > Z"
+    const hierarchyPattern = /([A-Za-z가-힣]+)\s*>\s*([A-Za-z가-힣]+)\s*>\s*([A-Za-z가-힣]+)/g;
+    const hierarchyMatches = text.match(hierarchyPattern) || [];
+    
+    return (matches.length + koreanMatches.length) >= 2 || numberedMatches.length >= 2 || 
+           rankNumberMatches.length >= 1 || hierarchyMatches.length >= 1;
   }
   
   /**
@@ -585,8 +636,8 @@ export class VisualizationGenerator {
                       ? d.data.label.substring(0, 13) + "..."
                       : d.data.label;
           return `${label} (${typeof d.data.value === 'number' && d.data.value.toString().includes('.') 
-                             ? d.data.value.toFixed(1) 
-                             : d.data.value}${d.data.value.toString().includes('%') ? '' : '%'})`;
+                             ? (d.data.value !== undefined ? d.data.value.toFixed(1) : '0.0')
+                             : d.data.value || '0'}${d.data.value.toString().includes('%') ? '' : '%'})`;
         })
         .style("font-size", "12px")
         .style("fill", "#333");
@@ -701,7 +752,7 @@ export class VisualizationGenerator {
      .attr("x", d => x(d.label) + x.bandwidth() / 2)
      .attr("y", d => y(d.value) - 5)
      .attr("text-anchor", "middle")
-     .text(d => d.value.toString().includes('.') ? d.value.toFixed(1) : d.value)
+     .text(d => d.value ? (d.value.toString().includes('.') ? d.value.toFixed(1) : d.value) : '0')
      .style("font-size", "12px");
     
     // Add title
@@ -725,7 +776,7 @@ export class VisualizationGenerator {
    */
   static generateHorizontalBarChart(data, width, height) {
     // Set up margins
-    const margin = { top: 40, right: 30, bottom: 40, left: 150 };
+    const margin = { top: 40, right: 80, bottom: 40, left: 150 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
     
@@ -749,7 +800,7 @@ export class VisualizationGenerator {
     const y = d3.scaleBand()
                 .domain(limitedData.map(d => d.label))
                 .range([0, innerHeight])
-                .padding(0.1);
+                .padding(0.2);
     
     const x = d3.scaleLinear()
                 .domain([0, d3.max(limitedData, d => d.value) * 1.1])
@@ -764,7 +815,8 @@ export class VisualizationGenerator {
     g.append("g")
      .call(d3.axisLeft(y))
      .selectAll("text")
-     .text(d => d.length > 20 ? d.substring(0, 18) + "..." : d);
+     .text(d => d.length > 20 ? d.substring(0, 18) + "..." : d)
+     .style("font-size", "12px");
     
     // Add x-axis (values)
     g.append("g")
@@ -778,7 +830,7 @@ export class VisualizationGenerator {
      .attr("text-anchor", "middle")
      .text("점수");
     
-    // Add bars
+    // Add bars with gradient fill
     g.selectAll(".bar")
      .data(limitedData)
      .enter()
@@ -788,7 +840,9 @@ export class VisualizationGenerator {
      .attr("x", 0)
      .attr("height", y.bandwidth())
      .attr("width", d => x(d.value))
-     .attr("fill", "#6A89CC");
+     .attr("fill", (d, i) => `hsl(${210 + i * 15}, 70%, ${60 - i * 3}%)`)
+     .attr("rx", 2)  // rounded corners
+     .attr("ry", 2); // rounded corners
     
     // Add value labels at the end of bars
     g.selectAll(".bar-label")
@@ -800,8 +854,23 @@ export class VisualizationGenerator {
      .attr("x", d => x(d.value) + 5)
      .attr("dominant-baseline", "middle")
      .attr("text-anchor", "start")
-     .text(d => d.value.toString().includes('.') ? d.value.toFixed(1) : d.value)
-     .style("font-size", "12px");
+     .text(d => d.value ? (d.value.toString().includes('.') ? d.value.toFixed(1) : d.value) : '0')
+     .style("font-size", "12px")
+     .style("font-weight", "bold");
+    
+    // Add ranking number
+    g.selectAll(".rank-label")
+     .data(limitedData)
+     .enter()
+     .append("text")
+     .attr("class", "rank-label")
+     .attr("y", d => y(d.label) + y.bandwidth() / 2)
+     .attr("x", -10)
+     .attr("dominant-baseline", "middle")
+     .attr("text-anchor", "end")
+     .text((d, i) => `${i+1}`)
+     .style("font-size", "12px")
+     .style("font-weight", "bold");
     
     // Add title
     svg.append("text")
@@ -915,7 +984,7 @@ export class VisualizationGenerator {
      .attr("x", d => x(d.label) + x.bandwidth() / 2)
      .attr("y", d => y(d.value) - 10)
      .attr("text-anchor", "middle")
-     .text(d => d.value.toString().includes('.') ? d.value.toFixed(1) : d.value)
+     .text(d => d.value ? (d.value.toString().includes('.') ? d.value.toFixed(1) : d.value) : '0')
      .style("font-size", "12px");
     
     // Add title
@@ -1039,14 +1108,32 @@ export class VisualizationGenerator {
  */
 export const generateVisualizationFromText = (text, width = 500, height = 400) => {
   try {
+    // Make sure we have valid text input
+    if (!text || typeof text !== 'string') {
+      console.error("텍스트 시각화 오류: 유효하지 않은 텍스트 입력");
+      return {
+        success: false,
+        error: "유효하지 않은 텍스트 입력"
+      };
+    }
+    
     // Analyze the text to determine visualization type and extract data
     const analysisResult = TextAnalyzer.analyzeText(text);
     
-    // Generate the SVG visualization
+    // Validate analysis result
+    if (!analysisResult || !analysisResult.type || !analysisResult.data) {
+      console.error("텍스트 시각화 오류: 분석 결과가 유효하지 않습니다");
+      return {
+        success: false,
+        error: "분석 결과가 유효하지 않습니다"
+      };
+    }
+    
+    // Generate the SVG visualization with safe defaults
     const svgContent = VisualizationGenerator.generateVisualization(
       analysisResult,
-      width,
-      height
+      width || 500,
+      height || 400
     );
     
     return {
@@ -1060,7 +1147,7 @@ export const generateVisualizationFromText = (text, width = 500, height = 400) =
     
     return {
       success: false,
-      error: error.message
+      error: error.message || "알 수 없는 오류가 발생했습니다"
     };
   }
 };

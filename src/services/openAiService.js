@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { generatePersonaImage } from "./imageGenerationService";
+import { getFilledPrompt } from "./promptService";
 
 // API 환경 설정 (Vite에서는 import.meta.env를 사용)
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
@@ -106,55 +107,19 @@ export const generateMultiplePersonas = async (
         // 통계 데이터 포맷팅
         const formattedStats = formatStatisticalData(statsData);
 
-        // 프롬프트 구성
-        const prompt = `
-당신은 마케팅 전문가로서 통계 데이터를 기반으로 정확한 페르소나를 생성하는 전문가입니다.
-다음 정보를 바탕으로 다양한 특성을 가진 ${count}명의 페르소나를 생성해주세요:
-
-목표 시장: ${targetMarket}
-목표 고객: ${targetCustomer}
-고객이 겪는 문제: ${problem}
-제공하고자 하는 솔루션: ${solution}
-
-${formattedStats}
-
-위 정보를 바탕으로 다음 형식의 JSON 배열로 ${count}명의 페르소나를 생성해주세요:
-[
-  {
-    "id": 1,
-    "name": "이름 (한국어 이름)",
-    "age": 나이 (숫자),
-    "gender": "성별",
-    "occupation": "직업",
-    "education": "최종 학력",
-    "personality": "성격 특성 (통계 데이터 기반)",
-    "behaviors": "소비 행동 특성 (통계 데이터 기반)",
-    "needs": "필요 사항 (문제와 연관)",
-    "goals": "목표 (솔루션과 연관)",
-    "frustrations": "불편함 (문제와 연관)",
-    "marketFit": "시장 적합성 설명",
-    "dayInLife": "일상 생활 묘사",
-    "quotes": ["인용구1", "인용구2"]
-  },
-  {
-    "id": 2,
-    ... 두 번째 페르소나 ...
-  },
-  ...
-]
-
-각 페르소나는 다음 조건을 만족해야 합니다:
-1. 서로 다른 특성을 가지되, 모두 목표 시장과 고객에 적합해야 함
-2. 다양한 인구통계학적 특성 (성별, 연령대, 직업 등) 반영
-3. 실제 사람처럼 구체적이고 현실적인 특성을 가짐
-4. 통계 데이터의 주요 클러스터나 상관관계를 반영
-
-오직 JSON 배열 형식으로만 응답해주세요.
-`;
+        // 외부 파일에서 프롬프트 로드
+        const prompt = await getFilledPrompt("persona_generation", {
+            count: count,
+            targetMarket: targetMarket,
+            targetCustomer: targetCustomer,
+            problem: problem,
+            solution: solution,
+            statsData: formattedStats
+        });
 
         // OpenAI API 호출
         const response = await openaiApi.post("/chat/completions", {
-            model: "gpt-4", // 사용 가능한 모델로 변경 가능
+            model: "gpt-4o", // 페르소나 생성을 위한 GPT-4o 모델 사용
             messages: [
                 {
                     role: "system",
