@@ -62,7 +62,7 @@ function App() {
         <div className="app-wrapper">
             <header className="header">
                 <div className="container">
-                    <h1 className="header-title">AI 기반 비즈니스 솔루션</h1>
+                    <h1 className="header-title">MarketLenz AI 기반 비즈니스 솔루션</h1>
                     <p className="header-subtitle">
                         페르소나 생성, 데이터 시각화 및 경영 컨설팅 서비스
                     </p>
@@ -126,7 +126,7 @@ function App() {
             <footer className="footer">
                 <div className="container">
                     <p className="footer-content">
-                        © 2025 AI 기반 비즈니스 솔루션 - 데이터 기반 의사결정을
+                        © 2025 MarketLenz AI 기반 비즈니스 솔루션 - 데이터 기반 의사결정을
                         위한 최적의 파트너
                     </p>
                 </div>
